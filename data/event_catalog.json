@@ -1,0 +1,170 @@
+{
+  "sampleEvents": [
+    "AI data center demand surges after hyperscaler capex guidance",
+    "New semiconductor tariffs announced on advanced chip imports from China",
+    "Power grid bottleneck delays new data center capacity in Northern Virginia",
+    "Middle East oil supply disruption raises energy security concerns",
+    "Federal permitting for AI infrastructure accelerates across multiple agencies"
+  ],
+  "eventTypes": {
+    "policy_semiconductor": {
+      "label": "Semiconductor Policy Shock",
+      "theme": "semiconductors",
+      "channels": ["trade_restriction", "supply_chain_risk", "domestic_rotation"],
+      "tone": "negative",
+      "explanation": "Semiconductors react first because the policy shock directly affects chip economics and supply chains. Broader tech follows as investors reprice growth and capex expectations. Utilities tend to move later as the narrative rotates toward domestic infrastructure resilience, while energy spillover is usually smaller and more conditional.",
+      "keywords": {
+        "tariff": 4,
+        "tariffs": 4,
+        "semiconductor": 4,
+        "semiconductors": 4,
+        "chip": 3,
+        "chips": 3,
+        "export": 2,
+        "exports": 2,
+        "import": 2,
+        "imports": 2,
+        "restriction": 3,
+        "restrictions": 3,
+        "control": 2,
+        "controls": 2,
+        "china": 2,
+        "nvidia": 1
+      },
+      "templates": {
+        "SOXX": { "amplitude_z": -1.55, "lag_days": 0.0, "decay": 1.25, "uncertainty_z": 0.38 },
+        "QQQ": { "amplitude_z": -0.92, "lag_days": 0.35, "decay": 1.5, "uncertainty_z": 0.3 },
+        "XLU": { "amplitude_z": 0.48, "lag_days": 1.15, "decay": 1.8, "uncertainty_z": 0.42 },
+        "XLE": { "amplitude_z": 0.22, "lag_days": 1.85, "decay": 2.2, "uncertainty_z": 0.5 }
+      }
+    },
+    "ai_demand": {
+      "label": "AI Demand Shock",
+      "theme": "AI infrastructure demand",
+      "channels": ["ai_capex", "compute_demand", "power_rotation"],
+      "tone": "positive",
+      "explanation": "Demand-led AI headlines usually lift semiconductors first because they sit at the core of compute buildouts. Broad tech follows as the market extrapolates stronger platform spending. Utilities and power-linked beneficiaries tend to respond with a lag as investors connect compute demand to electricity and grid constraints.",
+      "keywords": {
+        "ai": 2,
+        "demand": 3,
+        "capex": 4,
+        "spending": 3,
+        "hyperscaler": 3,
+        "hyperscalers": 3,
+        "cloud": 2,
+        "earnings": 2,
+        "buildout": 3,
+        "compute": 3,
+        "server": 3,
+        "servers": 3,
+        "gpu": 2,
+        "growth": 2,
+        "surges": 3,
+        "surge": 3,
+        "accelerates": 2,
+        "accelerate": 2
+      },
+      "templates": {
+        "SOXX": { "amplitude_z": 1.45, "lag_days": 0.0, "decay": 1.35, "uncertainty_z": 0.35 },
+        "QQQ": { "amplitude_z": 0.96, "lag_days": 0.15, "decay": 1.45, "uncertainty_z": 0.28 },
+        "XLU": { "amplitude_z": 0.72, "lag_days": 0.9, "decay": 1.9, "uncertainty_z": 0.34 },
+        "XLE": { "amplitude_z": 0.26, "lag_days": 1.45, "decay": 2.0, "uncertainty_z": 0.42 }
+      }
+    },
+    "power_bottleneck": {
+      "label": "Power Bottleneck",
+      "theme": "power constraints",
+      "channels": ["grid_constraint", "interconnection_delay", "power_rotation"],
+      "tone": "caution",
+      "explanation": "Power bottlenecks usually weigh on AI-linked growth assets because they threaten the pace of new compute deployment. Utilities often react later and more positively because the market rotates toward grid, transmission, and regulated power beneficiaries. Energy can benefit conditionally if the story expands into gas generation or backup power demand.",
+      "keywords": {
+        "power": 3,
+        "grid": 4,
+        "bottleneck": 4,
+        "bottlenecks": 4,
+        "delay": 3,
+        "delays": 3,
+        "delayed": 3,
+        "interconnection": 4,
+        "electricity": 3,
+        "utility": 2,
+        "utilities": 2,
+        "capacity": 2,
+        "transmission": 2,
+        "load": 2,
+        "constraint": 4,
+        "constraints": 4,
+        "shortage": 2
+      },
+      "templates": {
+        "SOXX": { "amplitude_z": -0.72, "lag_days": 0.45, "decay": 1.55, "uncertainty_z": 0.38 },
+        "QQQ": { "amplitude_z": -0.48, "lag_days": 0.55, "decay": 1.6, "uncertainty_z": 0.3 },
+        "XLU": { "amplitude_z": 0.88, "lag_days": 1.1, "decay": 2.05, "uncertainty_z": 0.35 },
+        "XLE": { "amplitude_z": 0.34, "lag_days": 1.5, "decay": 2.05, "uncertainty_z": 0.4 }
+      }
+    },
+    "geopolitical_energy": {
+      "label": "Geopolitical Energy Shock",
+      "theme": "energy security",
+      "channels": ["oil_supply_risk", "risk_off", "inflation_sensitivity"],
+      "tone": "negative",
+      "explanation": "Energy reacts first because the shock directly changes supply-risk pricing. Broad tech and semiconductors usually weaken shortly after as higher energy costs and risk-off positioning pressure duration-sensitive assets. Utilities are more mixed because they can benefit from defensiveness but still face input-cost uncertainty.",
+      "keywords": {
+        "oil": 4,
+        "gas": 3,
+        "lng": 3,
+        "middle": 1,
+        "east": 1,
+        "hormuz": 4,
+        "red": 2,
+        "sea": 2,
+        "disruption": 3,
+        "conflict": 3,
+        "escalation": 3,
+        "supply": 2,
+        "sanctions": 2,
+        "shipping": 2,
+        "geopolitical": 2
+      },
+      "templates": {
+        "SOXX": { "amplitude_z": -0.82, "lag_days": 0.4, "decay": 1.45, "uncertainty_z": 0.34 },
+        "QQQ": { "amplitude_z": -0.78, "lag_days": 0.3, "decay": 1.45, "uncertainty_z": 0.3 },
+        "XLU": { "amplitude_z": 0.14, "lag_days": 1.2, "decay": 1.9, "uncertainty_z": 0.38 },
+        "XLE": { "amplitude_z": 1.42, "lag_days": 0.0, "decay": 1.4, "uncertainty_z": 0.36 }
+      }
+    },
+    "policy_ai_infra": {
+      "label": "AI Infrastructure Policy Support",
+      "theme": "AI infrastructure policy",
+      "channels": ["permitting", "buildout_support", "power_enablement"],
+      "tone": "positive",
+      "explanation": "Supportive policy headlines tend to lift the whole AI infrastructure stack, though the move is sequenced. Semiconductors and broad tech respond earlier because they reflect improved deployment expectations. Utilities and power-linked assets usually react later as the policy support translates into more credible grid and capacity buildout assumptions.",
+      "keywords": {
+        "policy": 2,
+        "permitting": 4,
+        "permit": 4,
+        "permiting": 4,
+        "executive": 2,
+        "order": 2,
+        "federal": 2,
+        "infrastructure": 3,
+        "accelerate": 3,
+        "accelerates": 3,
+        "co-location": 2,
+        "colocation": 2,
+        "data": 1,
+        "center": 1,
+        "centers": 1,
+        "agency": 1,
+        "support": 2,
+        "supports": 2
+      },
+      "templates": {
+        "SOXX": { "amplitude_z": 0.86, "lag_days": 0.2, "decay": 1.55, "uncertainty_z": 0.32 },
+        "QQQ": { "amplitude_z": 0.72, "lag_days": 0.35, "decay": 1.65, "uncertainty_z": 0.3 },
+        "XLU": { "amplitude_z": 0.82, "lag_days": 1.05, "decay": 2.05, "uncertainty_z": 0.33 },
+        "XLE": { "amplitude_z": 0.22, "lag_days": 1.55, "decay": 2.05, "uncertainty_z": 0.4 }
+      }
+    }
+  }
+}

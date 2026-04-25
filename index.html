@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>AlphaLens</title>
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <div class="page-shell">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">Codex Challenge Prototype</p>
+          <h1>AlphaLens</h1>
+          <p class="hero-copy">
+            Paste a market-moving headline and simulate how semiconductors,
+            broad tech, utilities, and energy may react over the next three
+            trading days.
+          </p>
+        </div>
+        <div class="hero-badge">
+          <span>0-3D Horizon</span>
+          <span>Probabilistic Curves</span>
+          <span>Explainable Logic</span>
+        </div>
+      </header>
+
+      <nav class="tab-bar" aria-label="AlphaLens sections">
+        <button class="tab-button active" data-tab="analyze">Analyze Event</button>
+        <button class="tab-button" data-tab="history">History</button>
+        <button class="tab-button" data-tab="about">About</button>
+      </nav>
+
+      <main>
+        <section class="tab-panel active" id="tab-analyze">
+          <div class="analyze-grid">
+            <aside class="stack-col">
+              <article class="card input-card">
+                <div class="card-heading">
+                  <h2>Event Input</h2>
+                  <span class="card-kicker">Type or tap a sample</span>
+                </div>
+
+                <label class="sr-only" for="event-input">Event headline or description</label>
+                <textarea
+                  id="event-input"
+                  rows="5"
+                  placeholder="New tariffs on semiconductor imports from China"
+                ></textarea>
+
+                <div class="action-row">
+                  <button id="analyze-button" class="primary-button">Analyze Event</button>
+                  <button id="clear-button" class="secondary-button">Clear</button>
+                </div>
+
+                <div class="sample-group">
+                  <p class="sample-label">Sample events</p>
+                  <div id="sample-chips" class="chip-grid"></div>
+                </div>
+              </article>
+
+              <article class="card classification-card">
+                <div class="card-heading">
+                  <h2>Classification</h2>
+                  <span class="card-kicker">Event understanding layer</span>
+                </div>
+
+                <div class="classification-topline">
+                  <span id="classification-badge" class="event-badge neutral">Waiting for input</span>
+                  <span id="confidence-pill" class="confidence-pill">Confidence --</span>
+                </div>
+
+                <div class="confidence-meter">
+                  <div id="confidence-fill" class="confidence-fill"></div>
+                </div>
+
+                <dl class="meta-list">
+                  <div>
+                    <dt>Theme</dt>
+                    <dd id="classification-theme">--</dd>
+                  </div>
+                  <div>
+                    <dt>Channels</dt>
+                    <dd id="classification-channels">--</dd>
+                  </div>
+                  <div>
+                    <dt>Rationale</dt>
+                    <dd id="classification-rationale">Paste an event to classify it.</dd>
+                  </div>
+                </dl>
+              </article>
+
+              <article class="card analog-card">
+                <div class="card-heading">
+                  <h2>Historical Analogs</h2>
+                  <span class="card-kicker">Seed dataset examples</span>
+                </div>
+                <div id="analog-list" class="analog-list"></div>
+              </article>
+            </aside>
+
+            <div class="main-stage">
+              <article class="card chart-card">
+                <div class="card-heading chart-heading">
+                  <div>
+                    <h2>Reaction Trajectory</h2>
+                    <p class="subtle-copy">
+                      Parameterized impulse-response curves with uncertainty bands
+                    </p>
+                  </div>
+                  <div class="legend" id="chart-legend"></div>
+                </div>
+
+                <div class="chart-frame">
+                  <svg id="reaction-chart" viewBox="0 0 960 420" role="img" aria-label="AlphaLens reaction chart"></svg>
+                </div>
+              </article>
+
+              <div class="support-grid">
+                <article class="card timing-card">
+                  <div class="card-heading">
+                    <h2>Timing / Lead-Lag</h2>
+                    <span class="card-kicker">Who moves first</span>
+                  </div>
+                  <div id="timing-list" class="timing-list"></div>
+                </article>
+
+                <article class="card explanation-card">
+                  <div class="card-heading">
+                    <h2>Explanation</h2>
+                    <span class="card-kicker">Structured narrative</span>
+                  </div>
+                  <p id="explanation-text" class="explanation-text">
+                    Run an event to generate a market logic summary.
+                  </p>
+                  <p id="uncertainty-note" class="uncertainty-note">
+                    Uncertainty note will appear here.
+                  </p>
+                </article>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <section class="tab-panel" id="tab-history">
+          <article class="card history-card">
+            <div class="card-heading">
+              <h2>Analysis History</h2>
+              <span class="card-kicker">Local browser session memory</span>
+            </div>
+            <div id="history-list" class="history-list"></div>
+          </article>
+        </section>
+
+        <section class="tab-panel" id="tab-about">
+          <article class="card about-card">
+            <div class="card-heading">
+              <h2>About AlphaLens</h2>
+              <span class="card-kicker">Prototype framing</span>
+            </div>
+
+            <div class="about-copy">
+              <p>
+                AlphaLens is an experimental market-reaction simulator. It does
+                not try to predict exact prices. Instead, it classifies global
+                events into economic transmission channels and generates
+                plausible z-score response curves across semiconductors, broad
+                tech, utilities, and energy.
+              </p>
+              <p>
+                The current prototype uses local seed data, rule-based event
+                classification, parameterized response templates, and lightweight
+                explanation logic. The intended production version would replace
+                the rule-based layer with stronger model-based classification and
+                calibrate templates on a larger verified event set.
+              </p>
+              <p class="disclaimer">
+                This is a research prototype and not financial advice. Outputs
+                are simulated scenarios, not trading recommendations.
+              </p>
+            </div>
+          </article>
+        </section>
+      </main>
+    </div>
+
+    <script src="./app.js" defer></script>
+  </body>
+</html>
