@@ -211,7 +211,7 @@ function calibrateDataset(catalog, events) {
 
     return {
       ...event,
-      calibration: buildEventObservation(event, config),
+      calibration: parseObservedResponses(event) || buildEventObservation(event, config),
     };
   });
 
@@ -305,6 +305,29 @@ function buildEventObservation(event, config) {
       ),
     };
   });
+}
+
+function parseObservedResponses(event) {
+  const observed = {};
+
+  for (const assetName of Object.keys(ASSETS)) {
+    const lower = assetName.toLowerCase();
+    const amplitude = Number.parseFloat(event[`observed_${lower}_amplitude_z`]);
+    const lag = Number.parseFloat(event[`observed_${lower}_lag_days`]);
+    const decay = Number.parseFloat(event[`observed_${lower}_decay`]);
+
+    if ([amplitude, lag, decay].some((value) => Number.isNaN(value))) {
+      return null;
+    }
+
+    observed[assetName] = {
+      amplitude_z: roundTo(amplitude, 2),
+      lag_days: roundTo(lag, 2),
+      decay: roundTo(decay, 2),
+    };
+  }
+
+  return observed;
 }
 
 function buildObservationText(event) {
@@ -452,7 +475,15 @@ function computeCalibrationAdjustments(event, assetName, normalizedText) {
 }
 
 function containsAny(text, terms) {
-  return terms.some((term) => text.includes(term));
+  return terms.some((term) => textIncludesTerm(text, term));
+}
+
+function textIncludesTerm(text, term) {
+  const escaped = term
+    .toLowerCase()
+    .replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+    .replace(/\s+/g, "\\s+");
+  return new RegExp(`(^|[^a-z0-9])${escaped}([^a-z0-9]|$)`, "i").test(text);
 }
 
 function getTemplatesForEventType(eventType) {
@@ -496,7 +527,7 @@ function classifyEvent(text) {
     const matchedTerms = [];
 
     Object.entries(config.keywords).forEach(([keyword, weight]) => {
-      if (normalized.includes(keyword)) {
+      if (textIncludesTerm(normalized, keyword)) {
         score += weight;
         matchedTerms.push(keyword);
       }
@@ -530,109 +561,192 @@ function classifyEvent(text) {
     };
   }
 
+  const blendedComponents = buildBlendedComponents(scores, normalized);
   const separation = Math.max(0, top.score - (second?.score ?? 0));
   const baseConfidence =
     0.46 + Math.min(top.score, 14) * 0.035 + Math.min(separation, 6) * 0.03;
   const overlapPenalty =
     totalMatched > 0 ? Math.max(0, 0.1 - separation * 0.01) : 0;
-  const confidence = clamp(baseConfidence - overlapPenalty, 0.38, 0.94);
-
-  const orientation = detectOrientation(top.eventType, normalized);
-  const rationaleBits = top.matchedTerms.slice(0, 4);
-  const rationale = `Matched strongest to ${top.config.label.toLowerCase()} via ${rationaleBits.join(", ")}${
-    orientation.flipped ? ", with polarity adjusted for the wording of the headline" : ""
-  }.`;
+  const blendPenalty =
+    blendedComponents.length > 1
+      ? (1 - blendedComponents[0].weight) * 0.16
+      : 0;
+  const confidence = clamp(baseConfidence - overlapPenalty - blendPenalty, 0.38, 0.94);
+  const primaryComponent = blendedComponents[0];
+  const rationale = buildClassificationRationale(blendedComponents);
 
   return {
     supported: true,
-    event_type: top.eventType,
-    label: top.config.label,
-    tone: top.config.tone,
-    theme: top.config.theme,
-    channels: top.config.channels,
+    event_type: primaryComponent.eventType,
+    primary_event_type: primaryComponent.eventType,
+    label: buildClassificationLabel(blendedComponents),
+    tone: deriveClassificationTone(blendedComponents),
+    theme: blendedComponents.map((component) => component.theme).join(" + "),
+    channels: uniqueValues(
+      blendedComponents.flatMap((component) => component.channels),
+    ),
     confidence,
     rationale,
-    orientation,
+    components: blendedComponents,
   };
 }
 
+function buildBlendedComponents(scores, normalizedText) {
+  const positiveScores = scores.filter((item) => item.score > 0);
+  const top = positiveScores[0];
+  const threshold = Math.max(4, top.score * 0.45);
+  const selected = positiveScores
+    .filter((item, index) => index === 0 || item.score >= threshold)
+    .slice(0, 3);
+  const weightedBase = selected.reduce(
+    (sum, item) => sum + item.score ** 1.25,
+    0,
+  );
+
+  return selected.map((item) => ({
+    eventType: item.eventType,
+    label: item.config.label,
+    tone: item.config.tone,
+    theme: item.config.theme,
+    channels: item.config.channels,
+    matchedTerms: item.matchedTerms,
+    score: item.score,
+    weight: roundTo(item.score ** 1.25 / weightedBase, 3),
+    orientation: detectOrientation(item.eventType, normalizedText),
+  }));
+}
+
 function detectOrientation(eventType, normalizedText) {
-  const supportiveReversal =
-    (normalizedText.includes("veto") && normalizedText.includes("freeze")) ||
-    ((normalizedText.includes("reverse") || normalizedText.includes("reverses")) &&
-      containsAny(normalizedText, [
-        "restriction",
-        "restrictions",
-        "tariff",
-        "tariffs",
-        "export policy",
-        "export control",
-        "freeze",
-      ]));
-  const negativeWords = [
-    "slow",
-    "slows",
-    "slowdown",
-    "cuts",
+  const reliefSignals = [
+    "ease",
+    "eases",
+    "eased",
+    "relief",
+    "improve",
+    "improves",
+    "improved",
+    "resume",
+    "resumes",
+    "reopen",
+    "reopens",
+    "resolved",
+    "resolve",
+    "rollback",
+    "roll back",
+    "waive",
+    "waives",
+    "lift",
+    "lifts",
+    "relax",
+    "relaxes",
+  ];
+  const negativeSignals = [
     "cut",
-    "weak",
-    "weaker",
+    "cuts",
+    "slowdown",
     "delay",
     "delays",
     "delayed",
+    "weak",
+    "weaker",
     "freeze",
+    "halt",
+    "halts",
+    "pause",
+    "paused",
     "veto",
-    "risk",
-    "bottleneck",
   ];
 
-  const positiveWords = [
-    "accelerate",
-    "accelerates",
-    "surge",
-    "surges",
-    "boost",
-    "boosts",
-    "support",
-    "supports",
-    "expands",
-    "eases",
-    "relief",
-    "reopens",
-    "improves",
-    "reverses",
-    "reverse",
-    "rollback",
-    "waives",
-  ];
+  const aiContext = ["demand", "capex", "spending", "compute", "server", "buildout", "hyperscaler", "cloud"];
+  const policyContext = ["permit", "permitting", "policy", "infrastructure", "federal", "doe", "support", "agency"];
+  const semiconductorContext = ["tariff", "tariffs", "restriction", "restrictions", "export", "control", "controls", "semiconductor", "chip", "chips", "china"];
+  const powerContext = ["power", "grid", "electricity", "interconnection", "capacity", "constraint", "constraints", "bottleneck", "load", "transmission"];
+  const energyContext = ["oil", "gas", "lng", "shipping", "supply", "sanctions", "conflict", "middle east", "hormuz", "red sea", "energy"];
+  const hasVetoedFreeze =
+    containsAny(normalizedText, ["veto", "vetoes"]) &&
+    containsAny(normalizedText, ["freeze", "freezes"]);
 
-  const hasNegative = negativeWords.some((word) => normalizedText.includes(word));
-  const hasPositive = positiveWords.some((word) => normalizedText.includes(word));
-
-  const positiveBase =
-    eventType === "ai_demand" || eventType === "policy_ai_infra";
-  const negativeBase =
-    eventType === "policy_semiconductor" ||
-    eventType === "power_bottleneck" ||
-    eventType === "geopolitical_energy";
-
-  if (negativeBase && supportiveReversal) {
-    return { multiplier: -1, flipped: true };
-  }
-
-  if (positiveBase && supportiveReversal) {
+  if (eventType === "ai_demand") {
+    if (containsAny(normalizedText, negativeSignals) && containsAny(normalizedText, aiContext)) {
+      return { multiplier: -1, flipped: true };
+    }
     return { multiplier: 1, flipped: false };
   }
 
-  if (positiveBase && hasNegative && !hasPositive) {
-    return { multiplier: -1, flipped: true };
+  if (eventType === "policy_ai_infra") {
+    if (hasVetoedFreeze) {
+      return { multiplier: 1, flipped: false };
+    }
+    if (containsAny(normalizedText, negativeSignals) && containsAny(normalizedText, policyContext)) {
+      return { multiplier: -1, flipped: true };
+    }
+    return { multiplier: 1, flipped: false };
   }
 
-  if (negativeBase && hasPositive && !hasNegative) {
-    return { multiplier: -1, flipped: true };
+  if (eventType === "policy_semiconductor") {
+    if (containsAny(normalizedText, reliefSignals) && containsAny(normalizedText, semiconductorContext)) {
+      return { multiplier: -1, flipped: true };
+    }
+    return { multiplier: 1, flipped: false };
+  }
+
+  if (eventType === "power_bottleneck") {
+    if (containsAny(normalizedText, reliefSignals) && containsAny(normalizedText, powerContext)) {
+      return { multiplier: -1, flipped: true };
+    }
+    return { multiplier: 1, flipped: false };
+  }
+
+  if (eventType === "geopolitical_energy") {
+    if (containsAny(normalizedText, reliefSignals) && containsAny(normalizedText, energyContext)) {
+      return { multiplier: -1, flipped: true };
+    }
+    return { multiplier: 1, flipped: false };
   }
 
   return { multiplier: 1, flipped: false };
+}
+
+function buildClassificationLabel(components) {
+  if (components.length === 1) {
+    return components[0].label;
+  }
+
+  return components
+    .slice(0, 2)
+    .map((component) => component.label)
+    .join(" + ");
+}
+
+function buildClassificationRationale(components) {
+  if (components.length === 1) {
+    const component = components[0];
+    const rationaleBits = component.matchedTerms.slice(0, 4);
+    return `Matched strongest to ${component.label.toLowerCase()} via ${rationaleBits.join(", ")}${
+      component.orientation.flipped ? ", with polarity adjusted for the wording of the headline" : ""
+    }.`;
+  }
+
+  const summary = components
+    .map((component) => {
+      const terms = component.matchedTerms.slice(0, 3).join(", ");
+      const polarity = component.orientation.flipped
+        ? " with polarity adjustment"
+        : "";
+      return `${Math.round(component.weight * 100)}% ${component.label} (${terms}${polarity})`;
+    })
+    .join(" + ");
+
+  return `Blended market channels detected: ${summary}.`;
+}
+
+function deriveClassificationTone(components) {
+  if (components.length === 1) {
+    return components[0].tone;
+  }
+
+  const tones = uniqueValues(components.map((component) => component.tone));
+  return tones.length === 1 ? tones[0] : "caution";
 }
 
 function buildScenario(classification) {
@@ -640,10 +754,9 @@ function buildScenario(classification) {
     return buildUnsupportedScenario();
   }
 
-  const config = state.catalog.eventTypes[classification.event_type];
-  const calibratedTemplates = getTemplatesForEventType(classification.event_type);
-  const calibrationStats = state.calibrationStats[classification.event_type];
-  const orientationMultiplier = classification.orientation.multiplier;
+  const primaryConfig = state.catalog.eventTypes[classification.event_type];
+  const blendedTemplates = buildBlendedTemplates(classification.components);
+  const blendedStats = buildBlendedCalibrationStats(classification.components);
   const confidencePenalty = (1 - classification.confidence) * 0.45;
   const points = [];
 
@@ -651,11 +764,9 @@ function buildScenario(classification) {
     const t = (HORIZON_DAYS / (POINT_COUNT - 1)) * index;
     const row = { t, values: {} };
 
-    Object.entries(calibratedTemplates).forEach(([assetName, template]) => {
+    Object.entries(blendedTemplates).forEach(([assetName, template]) => {
       const response =
-        template.amplitude_z *
-        orientationMultiplier *
-        responseKernel(t, template.lag_days, template.decay);
+        template.amplitude_z * responseKernel(t, template.lag_days, template.decay);
       const uncertainty = template.uncertainty_z + confidencePenalty;
 
       row.values[assetName] = {
@@ -671,13 +782,77 @@ function buildScenario(classification) {
   return {
     supported: true,
     eventType: classification.event_type,
-    label: config.label,
+    label: classification.label,
     points,
-    calibrationStats,
-    templates: mapValues(calibratedTemplates, (template) => ({
+    calibrationStats: blendedStats,
+    components: classification.components,
+    templates: mapValues(blendedTemplates, (template) => ({
       ...template,
-      amplitude_z: template.amplitude_z * orientationMultiplier,
       uncertainty_z: template.uncertainty_z + confidencePenalty,
+    })),
+  };
+}
+
+function buildBlendedTemplates(components) {
+  return mapValues(ASSETS, (_, assetName) => {
+    let amplitude = 0;
+    let lagNumerator = 0;
+    let lagDenominator = 0;
+    let decayNumerator = 0;
+    let decayDenominator = 0;
+    let baseUncertainty = 0;
+    let disagreement = 0;
+    const contributions = [];
+
+    components.forEach((component) => {
+      const template = getTemplatesForEventType(component.eventType)[assetName];
+      const orientedAmplitude = template.amplitude_z * component.orientation.multiplier;
+      const contributionWeight = component.weight * Math.max(0.12, Math.abs(orientedAmplitude));
+
+      amplitude += component.weight * orientedAmplitude;
+      lagNumerator += contributionWeight * template.lag_days;
+      lagDenominator += contributionWeight;
+      decayNumerator += contributionWeight * template.decay;
+      decayDenominator += contributionWeight;
+      baseUncertainty += component.weight * template.uncertainty_z;
+      contributions.push({
+        amplitude: orientedAmplitude,
+        weight: component.weight,
+      });
+    });
+
+    const meanContribution = contributions.reduce(
+      (sum, item) => sum + item.amplitude * item.weight,
+      0,
+    );
+    disagreement = Math.sqrt(
+      contributions.reduce(
+        (sum, item) => sum + item.weight * (item.amplitude - meanContribution) ** 2,
+        0,
+      ),
+    );
+
+    return {
+      amplitude_z: roundTo(amplitude, 2),
+      lag_days: roundTo(lagDenominator ? lagNumerator / lagDenominator : 0, 2),
+      decay: roundTo(decayDenominator ? decayNumerator / decayDenominator : 1.5, 2),
+      uncertainty_z: roundTo(clamp(baseUncertainty + disagreement * 0.35, 0.18, 0.95), 2),
+    };
+  });
+}
+
+function buildBlendedCalibrationStats(components) {
+  return {
+    eventCount: components.reduce(
+      (sum, component) =>
+        sum + (state.calibrationStats[component.eventType]?.eventCount ?? 0),
+      0,
+    ),
+    components: components.map((component) => ({
+      eventType: component.eventType,
+      label: component.label,
+      weight: component.weight,
+      eventCount: state.calibrationStats[component.eventType]?.eventCount ?? 0,
     })),
   };
 }
@@ -821,6 +996,7 @@ function renderChart(scenario) {
 
 function renderTiming(classification, scenario) {
   DOM.timingList.innerHTML = "";
+  const isBlended = (classification.components?.length ?? 0) > 1;
 
   const entries = Object.entries(scenario.templates)
     .map(([assetName, template]) => {
@@ -829,11 +1005,13 @@ function renderTiming(classification, scenario) {
         assetName,
         timingLabel: toTimingLabel(lag),
         lag,
-        interpretation: interpretationForAsset(
-          classification.event_type,
-          assetName,
-          classification.supported,
-        ),
+        interpretation: isBlended
+          ? blendedInterpretationForAsset(classification.components, assetName)
+          : interpretationForAsset(
+              classification.event_type,
+              assetName,
+              classification.supported,
+            ),
         amplitude: template.amplitude_z,
       };
     })
@@ -866,6 +1044,7 @@ function renderExplanation(classification, scenario) {
   }
 
   const config = state.catalog.eventTypes[classification.event_type];
+  const isBlended = (classification.components?.length ?? 0) > 1;
   const strongestAsset = Object.entries(scenario.templates).sort(
     (left, right) => Math.abs(right[1].amplitude_z) - Math.abs(left[1].amplitude_z),
   )[0][0];
@@ -875,7 +1054,16 @@ function renderExplanation(classification, scenario) {
       ? "Confidence is relatively strong because the headline maps cleanly to one template."
       : "Confidence is moderate because the headline overlaps multiple market channels.";
 
-  DOM.explanationText.textContent = `${config.explanation} The strongest modeled move is in ${strongestAsset}. These curves are learned from ${eventCount} seeded analogs in the local dataset rather than pulled directly from a fixed template row. ${confidenceTone}`;
+  const blendSummary = isBlended
+    ? ` This scenario blends ${classification.components
+        .map(
+          (component) =>
+            `${Math.round(component.weight * 100)}% ${component.label.toLowerCase()}`,
+        )
+        .join(" with ")}.`
+    : "";
+
+  DOM.explanationText.textContent = `${config.explanation}${blendSummary} The strongest modeled move is in ${strongestAsset}. These curves are learned from ${eventCount} seeded analogs in the local dataset rather than pulled directly from a fixed template row. ${confidenceTone}`;
   DOM.uncertaintyNote.textContent = `Uncertainty_z comes from cross-event dispersion in the seed dataset, then widens when classification confidence falls. Current confidence: ${Math.round(
     classification.confidence * 100,
   )}% across the supported template set.`;
@@ -902,8 +1090,23 @@ function renderAnalogs(classification) {
     return;
   }
 
+  const componentWeights = Object.fromEntries(
+    (classification.components || []).map((component) => [
+      component.eventType,
+      component.weight,
+    ]),
+  );
   const analogs = state.events
-    .filter((event) => event.event_type === classification.event_type)
+    .filter((event) => componentWeights[event.event_type])
+    .sort((left, right) => {
+      const weightDelta =
+        componentWeights[right.event_type] - componentWeights[left.event_type];
+      if (Math.abs(weightDelta) > 0.001) {
+        return weightDelta;
+      }
+
+      return right.event_date.localeCompare(left.event_date);
+    })
     .slice(0, 3);
 
   analogs.forEach((analog) => {
@@ -929,7 +1132,7 @@ function formatAnalogNote(event) {
     .map(([assetName, observation]) => `${assetName} ${formatSigned(observation.amplitude_z)}`)
     .join(" · ");
 
-  return `Theme: ${event.theme}. Seeded observed peaks: ${topMoves}. Source: ${event.source_hint}.`;
+  return `Type: ${state.catalog.eventTypes[event.event_type]?.label ?? event.event_type}. Theme: ${event.theme}. Seeded observed peaks: ${topMoves}. Source: ${event.source_hint}.`;
 }
 
 function interpretationForAsset(eventType, assetName, supported) {
@@ -971,6 +1174,22 @@ function interpretationForAsset(eventType, assetName, supported) {
   };
 
   return map[eventType][assetName];
+}
+
+function blendedInterpretationForAsset(components, assetName) {
+  const labels = components
+    .slice(0, 2)
+    .map((component) => component.label)
+    .join(" + ");
+
+  const assetCopy = {
+    SOXX: `Semiconductors absorb the blended signal from ${labels} first.`,
+    QQQ: `Broad tech reflects the weighted mix of ${labels} after semiconductors.`,
+    XLU: `Utilities capture the blended second-order power and infrastructure read-through.`,
+    XLE: `Energy only follows when the blended narrative touches fuel, generation, or supply risk.`,
+  };
+
+  return assetCopy[assetName];
 }
 
 function toTimingLabel(lagDays) {
@@ -1153,6 +1372,10 @@ function mapValues(object, mapper) {
   return Object.fromEntries(
     Object.entries(object).map(([key, value]) => [key, mapper(value, key)]),
   );
+}
+
+function uniqueValues(values) {
+  return [...new Set(values)];
 }
 
 function mean(values) {

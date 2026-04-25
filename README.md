@@ -8,7 +8,7 @@ This folder contains the current build of the AlphaLens MVP prototype.
 - `styles.css` - visual design
 - `app.js` - classifier, chart, explanation, history, and local data loading
 - `data/event_catalog.json` - event taxonomy, keywords, and calibrated templates
-- `data/events_seed.csv` - seeded historical event dataset
+- `data/events_seed.csv` - seeded historical event dataset with explicit observed per-asset reaction fields
 
 ## Run locally
 
@@ -32,8 +32,8 @@ Then visit `http://localhost:8000`.
 - 4 tracked ETFs: `SOXX`, `QQQ`, `XLU`, `XLE`
 - local event taxonomy and seeded calibration pipeline
 - CSV-backed seed event dataset
-- rule-based event classification
-- learned `amplitude_z`, `lag_days`, `decay`, and `uncertainty_z` templates aggregated from seeded event observations
+- weighted multi-channel event classification with blended templates
+- learned `amplitude_z`, `lag_days`, `decay`, and `uncertainty_z` templates aggregated from explicit seeded event observations
 - SVG chart rendering
 - local browser history via `localStorage`
 
