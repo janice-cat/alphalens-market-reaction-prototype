@@ -30,9 +30,10 @@ Then visit `http://localhost:8000`.
 
 - 5 supported event types
 - 4 tracked ETFs: `SOXX`, `QQQ`, `XLU`, `XLE`
-- local event taxonomy and parameterized response templates
+- local event taxonomy and seeded calibration pipeline
 - CSV-backed seed event dataset
 - rule-based event classification
+- learned `amplitude_z`, `lag_days`, `decay`, and `uncertainty_z` templates aggregated from seeded event observations
 - SVG chart rendering
 - local browser history via `localStorage`
 
