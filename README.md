@@ -32,6 +32,7 @@ Then visit `http://localhost:8000`.
 - 4 tracked ETFs: `SOXX`, `QQQ`, `XLU`, `XLE`
 - local event taxonomy and seeded calibration pipeline
 - CSV-backed seed event dataset
+- per-event `source_url` and `validation_status` provenance metadata
 - weighted multi-channel event classification with blended templates
 - learned `amplitude_z`, `lag_days`, `decay`, and `uncertainty_z` templates aggregated from explicit seeded event observations
 - SVG chart rendering
@@ -43,3 +44,4 @@ Then visit `http://localhost:8000`.
 - no backend
 - no LLM classification
 - no API integration yet
+- seeded observations still approximate market reactions rather than measured ETF windows

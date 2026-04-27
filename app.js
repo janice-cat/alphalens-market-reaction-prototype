@@ -35,6 +35,7 @@ const DOM = {
   classificationBadge: document.querySelector("#classification-badge"),
   confidencePill: document.querySelector("#confidence-pill"),
   confidenceFill: document.querySelector("#confidence-fill"),
+  blendList: document.querySelector("#blend-list"),
   classificationTheme: document.querySelector("#classification-theme"),
   classificationChannels: document.querySelector("#classification-channels"),
   classificationRationale: document.querySelector("#classification-rationale"),
@@ -132,6 +133,8 @@ function setLoadingState() {
   DOM.classificationBadge.className = "event-badge neutral";
   DOM.confidencePill.textContent = "Confidence --";
   DOM.confidenceFill.style.width = "0%";
+  DOM.blendList.innerHTML =
+    '<p class="empty-state">Loading blend weights from the seed calibration set.</p>';
   DOM.classificationTheme.textContent = "--";
   DOM.classificationChannels.textContent = "--";
   DOM.classificationRationale.textContent =
@@ -150,6 +153,8 @@ function setDatasetErrorState(error) {
   DOM.analyzeButton.disabled = true;
   DOM.classificationBadge.textContent = "Dataset Load Failed";
   DOM.classificationBadge.className = "event-badge caution";
+  DOM.blendList.innerHTML =
+    '<p class="empty-state">Blend breakdown unavailable until the dataset loads.</p>';
   DOM.classificationRationale.textContent = `Could not load local dataset files: ${error.message}`;
   DOM.analogList.innerHTML =
     '<p class="empty-state">Dataset loading failed. Check the local server and data files.</p>';
@@ -1079,6 +1084,43 @@ function updateClassificationUI(classification) {
   DOM.classificationTheme.textContent = classification.theme;
   DOM.classificationChannels.textContent = classification.channels.join(" · ");
   DOM.classificationRationale.textContent = classification.rationale;
+  renderBlendMix(classification);
+}
+
+function renderBlendMix(classification) {
+  DOM.blendList.innerHTML = "";
+
+  if (!classification.supported) {
+    DOM.blendList.innerHTML =
+      '<p class="empty-state">No supported template blend for this headline.</p>';
+    return;
+  }
+
+  const components = classification.components || [];
+
+  components.forEach((component) => {
+    const item = document.createElement("div");
+    item.className = "blend-item";
+    const weightPercent = Math.round(component.weight * 100);
+    const polarityNote = component.orientation.flipped
+      ? '<span class="blend-flag">Polarity adjusted</span>'
+      : "";
+
+    item.innerHTML = `
+      <div class="blend-row">
+        <div class="blend-label-group">
+          <span class="blend-label">${component.label}</span>
+          ${polarityNote}
+        </div>
+        <span class="blend-value">${weightPercent}%</span>
+      </div>
+      <div class="blend-bar">
+        <div class="blend-fill" style="width:${weightPercent}%"></div>
+      </div>
+    `;
+
+    DOM.blendList.appendChild(item);
+  });
 }
 
 function renderAnalogs(classification) {
@@ -1116,6 +1158,10 @@ function renderAnalogs(classification) {
       <div class="analog-date">${analog.event_date}</div>
       <div class="analog-title">${analog.event_text}</div>
       <div class="analog-note">${formatAnalogNote(analog)}</div>
+      <div class="analog-footer">
+        <span class="status-pill">${formatStatusLabel(analog.validation_status)}</span>
+        ${buildSourceLinkMarkup(analog)}
+      </div>
     `;
     DOM.analogList.appendChild(item);
   });
@@ -1133,6 +1179,33 @@ function formatAnalogNote(event) {
     .join(" · ");
 
   return `Type: ${state.catalog.eventTypes[event.event_type]?.label ?? event.event_type}. Theme: ${event.theme}. Seeded observed peaks: ${topMoves}. Source: ${event.source_hint}.`;
+}
+
+function buildSourceLinkMarkup(event) {
+  if (!event.source_url) {
+    return `<span class="source-meta">${event.source_hint}</span>`;
+  }
+
+  const sourceLabel = event.source_hint
+    ? `${event.source_hint} query`
+    : "Reference query";
+
+  return `<a class="source-link" href="${event.source_url}" target="_blank" rel="noreferrer">${sourceLabel}</a>`;
+}
+
+function formatStatusLabel(status) {
+  if (!status) {
+    return "Unlabeled";
+  }
+
+  const statusMap = {
+    news_query_linked_seeded_observation:
+      "Seeded observation · news query",
+    aggregator_query_linked_seeded_observation:
+      "Seeded observation · aggregator query",
+  };
+
+  return statusMap[status] || status.replaceAll("_", " ");
 }
 
 function interpretationForAsset(eventType, assetName, supported) {

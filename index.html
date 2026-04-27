@@ -74,6 +74,14 @@
                   <div id="confidence-fill" class="confidence-fill"></div>
                 </div>
 
+                <div class="blend-panel">
+                  <div class="blend-heading">
+                    <span>Blend Mix</span>
+                    <span class="blend-kicker">Weighted template exposure</span>
+                  </div>
+                  <div id="blend-list" class="blend-list"></div>
+                </div>
+
                 <dl class="meta-list">
                   <div>
                     <dt>Theme</dt>
@@ -173,6 +181,34 @@
                 explanation logic. The intended production version would replace
                 the rule-based layer with stronger model-based classification and
                 calibrate templates on a larger verified event set.
+              </p>
+              <div class="provenance-panel">
+                <h3>Observed Data Provenance</h3>
+                <p>
+                  Each seed event now carries explicit per-asset observed
+                  <code>amplitude_z</code>, <code>lag_days</code>, and
+                  <code>decay</code> fields, but those
+                  observations are still seeded approximations rather than
+                  measured market reactions.
+                </p>
+                <p>
+                  <code>source_url</code> currently points to a reference search
+                  page for the event query, not a fully article-verified
+                  canonical link in every row. <code>validation_status</code>
+                  makes that distinction
+                  explicit so we do not overstate data confidence.
+                </p>
+                <p>
+                  The next rigor upgrade is to replace those seeded observations
+                  with real ETF reaction windows computed from timestamped
+                  articles and historical market data.
+                </p>
+              </div>
+              <p>
+                Classification can also blend multiple market channels when a
+                headline touches more than one driver, so the UI now shows
+                weighted template exposure instead of forcing every event into a
+                single bucket.
               </p>
               <p class="disclaimer">
                 This is a research prototype and not financial advice. Outputs
