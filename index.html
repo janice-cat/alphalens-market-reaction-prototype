@@ -13,15 +13,9 @@
           <p class="eyebrow">Codex Challenge Prototype</p>
           <h1>AlphaLens</h1>
           <p class="hero-copy">
-            Paste a market-moving headline and simulate how semiconductors,
-            broad tech, utilities, and energy may react over the next three
-            trading days.
+            Paste a headline to simulate how SOXX, QQQ, XLU, and XLE may react
+            over the next 0-3 trading days.
           </p>
-        </div>
-        <div class="hero-badge">
-          <span>0-3D Horizon</span>
-          <span>Probabilistic Curves</span>
-          <span>Explainable Logic</span>
         </div>
       </header>
 
@@ -54,8 +48,8 @@
                 </div>
 
                 <div class="sample-group">
-                  <p class="sample-label">Sample events</p>
-                  <div id="sample-chips" class="chip-grid"></div>
+                  <p class="sample-label">Sample headlines</p>
+                  <div id="sample-chips" class="sample-scroll"></div>
                 </div>
               </article>
 
@@ -113,7 +107,7 @@
                   <div>
                     <h2>Reaction Trajectory</h2>
                     <p class="subtle-copy">
-                      Parameterized impulse-response curves with uncertainty bands
+                      0-3 day reaction paths with uncertainty bands
                     </p>
                   </div>
                   <div class="legend" id="chart-legend"></div>
@@ -138,12 +132,20 @@
                     <h2>Explanation</h2>
                     <span class="card-kicker">Structured narrative</span>
                   </div>
-                  <p id="explanation-text" class="explanation-text">
-                    Run an event to generate a market logic summary.
-                  </p>
-                  <p id="uncertainty-note" class="uncertainty-note">
-                    Uncertainty note will appear here.
-                  </p>
+                  <div class="explanation-stack">
+                    <section class="explanation-section">
+                      <p class="explanation-label">Market Read</p>
+                      <p id="market-read-text" class="explanation-text">
+                        Run an event to generate an asset-trend summary.
+                      </p>
+                    </section>
+                    <section class="explanation-section">
+                      <p class="explanation-label">Confidence and Caveats</p>
+                      <p id="confidence-text" class="uncertainty-note">
+                        Confidence details will appear here.
+                      </p>
+                    </section>
+                  </div>
                 </article>
               </div>
             </div>
@@ -172,43 +174,64 @@
                 AlphaLens is an experimental market-reaction simulator. It does
                 not try to predict exact prices. Instead, it classifies global
                 events into economic transmission channels and generates
-                plausible z-score response curves across semiconductors, broad
-                tech, utilities, and energy.
+                plausible reaction paths across semiconductors, broad tech,
+                utilities, and energy.
               </p>
               <p>
                 The current prototype uses local seed data, rule-based event
-                classification, parameterized response templates, and lightweight
+                classification, structured reaction patterns, and lightweight
                 explanation logic. The intended production version would replace
                 the rule-based layer with stronger model-based classification and
                 calibrate templates on a larger verified event set.
               </p>
               <div class="provenance-panel">
-                <h3>Observed Data Provenance</h3>
+                <h3>How the Seed Dataset Works</h3>
                 <p>
-                  Each seed event now carries explicit per-asset observed
-                  <code>amplitude_z</code>, <code>lag_days</code>, and
-                  <code>decay</code> fields, but those
-                  observations are still seeded approximations rather than
-                  measured market reactions.
+                  AlphaLens currently learns from a small hand-built seed
+                  dataset. Each entry is meant to be a useful reference case,
+                  not a claim that the market moved in exactly that way.
                 </p>
-                <p>
-                  <code>source_url</code> currently points to a reference search
-                  page for the event query, not a fully article-verified
-                  canonical link in every row. <code>validation_status</code>
-                  makes that distinction
-                  explicit so we do not overstate data confidence.
-                </p>
-                <p>
-                  The next rigor upgrade is to replace those seeded observations
-                  with real ETF reaction windows computed from timestamped
-                  articles and historical market data.
-                </p>
+                <div class="dataset-rows" role="list">
+                  <div class="dataset-row" role="listitem">
+                    <div class="dataset-label">Headline entry</div>
+                    <div class="dataset-copy">
+                      A short event example that captures the market setup AlphaLens
+                      is trying to learn from.
+                    </div>
+                  </div>
+                  <div class="dataset-row" role="listitem">
+                    <div class="dataset-label">Source trail</div>
+                    <div class="dataset-copy">
+                      A path back to where the event idea came from. Right now,
+                      many of those links are reference searches rather than one
+                      fully article-verified source.
+                    </div>
+                  </div>
+                  <div class="dataset-row" role="listitem">
+                    <div class="dataset-label">Confidence tag</div>
+                    <div class="dataset-copy">
+                      A plain-language marker showing how verified that entry is
+                      today, so the prototype does not overstate data confidence.
+                    </div>
+                  </div>
+                  <div class="dataset-row" role="listitem">
+                    <div class="dataset-label">Reaction sketch</div>
+                    <div class="dataset-copy">
+                      An approximate picture of which assets move most, how
+                      quickly they react, and how long the move tends to last.
+                    </div>
+                  </div>
+                </div>
               </div>
               <p>
-                Classification can also blend multiple market channels when a
-                headline touches more than one driver, so the UI now shows
-                weighted template exposure instead of forcing every event into a
-                single bucket.
+                Some headlines touch more than one market driver at once. When
+                that happens, AlphaLens blends those signals instead of forcing
+                every event into a single bucket.
+              </p>
+              <p>
+                The next dataset upgrade is to replace these hand-seeded
+                reaction sketches with measured market windows tied to
+                timestamped articles and historical ETF data.
               </p>
               <p class="disclaimer">
                 This is a research prototype and not financial advice. Outputs

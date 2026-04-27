@@ -6,29 +6,67 @@ const ASSETS = {
   SOXX: {
     name: "SOXX",
     label: "Semiconductor ETF",
+    legendLabel: "Semiconductors",
     color: "#7dc9ff",
   },
   QQQ: {
     name: "QQQ",
     label: "Broad Tech / Nasdaq-100 ETF",
+    legendLabel: "Broad tech",
     color: "#67f0c6",
   },
   XLU: {
     name: "XLU",
     label: "Utilities ETF",
+    legendLabel: "Utilities",
     color: "#ffb86b",
   },
   XLE: {
     name: "XLE",
     label: "Energy ETF",
+    legendLabel: "Energy",
     color: "#ff7c82",
   },
 };
+
+const EVENT_TYPE_THEME = {
+  policy_semiconductor: "semiconductor",
+  ai_demand: "ai",
+  power_bottleneck: "power",
+  policy_ai_infra: "power",
+  geopolitical_energy: "energy",
+};
+
+const THEME_CONFIG = {
+  semiconductor: {
+    title: "Semiconductors",
+    color: ASSETS.SOXX.color,
+  },
+  ai: {
+    title: "AI / Tech",
+    color: ASSETS.QQQ.color,
+  },
+  power: {
+    title: "Power / Infrastructure",
+    color: ASSETS.XLU.color,
+  },
+  energy: {
+    title: "Energy / Geopolitics",
+    color: ASSETS.XLE.color,
+  },
+  neutral: {
+    title: "General",
+    color: "#b7caea",
+  },
+};
+
+const SAMPLE_THEME_ORDER = ["semiconductor", "ai", "power", "energy"];
 
 const DOM = {
   tabs: document.querySelectorAll(".tab-button"),
   panels: document.querySelectorAll(".tab-panel"),
   input: document.querySelector("#event-input"),
+  inputCard: document.querySelector(".input-card"),
   analyzeButton: document.querySelector("#analyze-button"),
   clearButton: document.querySelector("#clear-button"),
   sampleChips: document.querySelector("#sample-chips"),
@@ -41,10 +79,11 @@ const DOM = {
   classificationRationale: document.querySelector("#classification-rationale"),
   analogList: document.querySelector("#analog-list"),
   chart: document.querySelector("#reaction-chart"),
+  chartCard: document.querySelector(".chart-card"),
   chartLegend: document.querySelector("#chart-legend"),
   timingList: document.querySelector("#timing-list"),
-  explanationText: document.querySelector("#explanation-text"),
-  uncertaintyNote: document.querySelector("#uncertainty-note"),
+  marketReadText: document.querySelector("#market-read-text"),
+  confidenceText: document.querySelector("#confidence-text"),
   historyList: document.querySelector("#history-list"),
 };
 
@@ -125,6 +164,8 @@ function bindEvents() {
       runAnalysis(DOM.input.value, { persist: true });
     }
   });
+
+  window.addEventListener("resize", scheduleTopPanelSync);
 }
 
 function setLoadingState() {
@@ -143,9 +184,9 @@ function setLoadingState() {
     '<p class="empty-state">Loading historical analogs from the seed dataset.</p>';
   DOM.timingList.innerHTML =
     '<p class="empty-state">Loading calibrated response templates.</p>';
-  DOM.explanationText.textContent =
+  DOM.marketReadText.textContent =
     "Loading event taxonomy, templates, and seed data.";
-  DOM.uncertaintyNote.textContent =
+  DOM.confidenceText.textContent =
     "The prototype now loads from local dataset files instead of hardcoded constants.";
 }
 
@@ -160,9 +201,9 @@ function setDatasetErrorState(error) {
     '<p class="empty-state">Dataset loading failed. Check the local server and data files.</p>';
   DOM.timingList.innerHTML =
     '<p class="empty-state">Timing panel unavailable until the dataset loads.</p>';
-  DOM.explanationText.textContent =
+  DOM.marketReadText.textContent =
     "The prototype could not load its local data files. Once the dataset is available, event classification and reaction curves will resume.";
-  DOM.uncertaintyNote.textContent =
+  DOM.confidenceText.textContent =
     "This usually means the prototype was opened without the local server or a data file is missing.";
 }
 
@@ -180,16 +221,53 @@ function renderSampleChips() {
   DOM.analyzeButton.disabled = false;
   DOM.sampleChips.innerHTML = "";
 
+  const groupedSamples = Object.fromEntries(
+    SAMPLE_THEME_ORDER.map((themeKey) => [themeKey, []]),
+  );
+
   state.catalog.sampleEvents.forEach((sample) => {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "chip";
-    button.textContent = sample;
-    button.addEventListener("click", () => {
-      DOM.input.value = sample;
-      runAnalysis(sample, { persist: true });
+    const classification = classifyEvent(sample);
+    const themeKey = themeKeyForEventType(classification.event_type);
+    groupedSamples[themeKey] = groupedSamples[themeKey] || [];
+    groupedSamples[themeKey].push({
+      text: sample,
+      label: classification.label,
+      themeKey,
     });
-    DOM.sampleChips.appendChild(button);
+  });
+
+  SAMPLE_THEME_ORDER.forEach((themeKey) => {
+    const samples = groupedSamples[themeKey] || [];
+    if (!samples.length) {
+      return;
+    }
+
+    const theme = themeForKey(themeKey);
+    const cluster = document.createElement("section");
+    cluster.className = "sample-cluster";
+    cluster.innerHTML = `
+      <div class="sample-cluster-heading">
+        <div class="sample-cluster-title">${theme.title}</div>
+      </div>
+    `;
+
+    samples.forEach((sample) => {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = "sample-card";
+      button.setAttribute("style", buildThemeVars(theme.color, 0.12));
+      button.innerHTML = `
+        <span class="sample-card-meta">${sample.label}</span>
+        <span class="sample-card-title">${sample.text}</span>
+      `;
+      button.addEventListener("click", () => {
+        DOM.input.value = sample.text;
+        runAnalysis(sample.text, { persist: true });
+      });
+      cluster.appendChild(button);
+    });
+
+    DOM.sampleChips.appendChild(cluster);
   });
 }
 
@@ -201,7 +279,10 @@ function renderLegend() {
     item.className = "legend-item";
     item.innerHTML = `
       <span class="legend-swatch" style="background:${asset.color}"></span>
-      <span>${asset.name}</span>
+      <span class="legend-copy">
+        <span class="legend-ticker">${asset.name}</span>
+        <span class="legend-caption">${asset.legendLabel}</span>
+      </span>
     `;
     DOM.chartLegend.appendChild(item);
   });
@@ -517,6 +598,7 @@ function runAnalysis(inputText, options = { persist: true }) {
   renderChart(scenario);
   renderTiming(classification, scenario);
   renderExplanation(classification, scenario);
+  scheduleTopPanelSync();
 
   if (options.persist) {
     pushHistory(cleanInput, classification, scenario);
@@ -906,8 +988,8 @@ function smoothstep(edge0, edge1, x) {
 
 function renderChart(scenario) {
   const width = 960;
-  const height = 420;
-  const padding = { top: 28, right: 40, bottom: 48, left: 66 };
+  const height = 380;
+  const padding = { top: 22, right: 36, bottom: 36, left: 64 };
   const innerWidth = width - padding.left - padding.right;
   const innerHeight = height - padding.top - padding.bottom;
 
@@ -946,7 +1028,7 @@ function renderChart(scenario) {
       `<line class="chart-grid" x1="${x}" y1="${padding.top}" x2="${x}" y2="${height - padding.bottom}"></line>`,
     );
     chartParts.push(
-      `<text class="chart-tick" x="${x}" y="${height - 18}" text-anchor="middle">Day ${day}</text>`,
+      `<text class="chart-tick" x="${x}" y="${height - 14}" text-anchor="middle">Day ${day}</text>`,
     );
   }
 
@@ -956,12 +1038,12 @@ function renderChart(scenario) {
     )}"></line>`,
   );
   chartParts.push(
-    `<text class="chart-axis-label" x="${width / 2}" y="${height - 4}" text-anchor="middle">Trading days after event</text>`,
+    `<text class="chart-axis-label" x="${width / 2}" y="${height - 2}" text-anchor="middle">Trading days after event</text>`,
   );
   chartParts.push(
     `<text class="chart-axis-label" x="18" y="${height / 2}" transform="rotate(-90 18 ${
       height / 2
-    })" text-anchor="middle">Relative response (z-score)</text>`,
+    })" text-anchor="middle">Relative reaction strength</text>`,
   );
 
   Object.entries(ASSETS).forEach(([assetName, asset]) => {
@@ -1024,7 +1106,8 @@ function renderTiming(classification, scenario) {
 
   entries.forEach((entry) => {
     const item = document.createElement("div");
-    item.className = "timing-item";
+    item.className = "timing-item themed-card";
+    item.setAttribute("style", buildThemeVars(ASSETS[entry.assetName].color, 0.12));
     item.innerHTML = `
       <div class="timing-copy">
         <div class="timing-meta">${entry.assetName} · ${ASSETS[entry.assetName].label}</div>
@@ -1041,10 +1124,10 @@ function renderTiming(classification, scenario) {
 
 function renderExplanation(classification, scenario) {
   if (!classification.supported) {
-    DOM.explanationText.textContent =
+    DOM.marketReadText.textContent =
       "This headline sits outside the prototype's current template set, so AlphaLens intentionally avoids a strong sector-level call.";
-    DOM.uncertaintyNote.textContent =
-      "Uncertainty is high because the current MVP only supports a narrow set of AI infrastructure, semiconductor policy, power, and geopolitical energy events.";
+    DOM.confidenceText.textContent =
+      "Confidence is low because the current MVP only supports a narrow set of AI infrastructure, semiconductor policy, power, and energy-linked events.";
     return;
   }
 
@@ -1056,22 +1139,22 @@ function renderExplanation(classification, scenario) {
   const eventCount = scenario.calibrationStats?.eventCount ?? 0;
   const confidenceTone =
     classification.confidence > 0.78
-      ? "Confidence is relatively strong because the headline maps cleanly to one template."
-      : "Confidence is moderate because the headline overlaps multiple market channels.";
+      ? "The headline maps fairly cleanly into the current event map."
+      : "The headline overlaps multiple market channels, so the scenario is more interpretive.";
 
   const blendSummary = isBlended
-    ? ` This scenario blends ${classification.components
+    ? ` This read blends ${classification.components
         .map(
           (component) =>
             `${Math.round(component.weight * 100)}% ${component.label.toLowerCase()}`,
         )
         .join(" with ")}.`
-    : "";
+    : ` This read is driven mainly by ${classification.label.toLowerCase()}.`;
 
-  DOM.explanationText.textContent = `${config.explanation}${blendSummary} The strongest modeled move is in ${strongestAsset}. These curves are learned from ${eventCount} seeded analogs in the local dataset rather than pulled directly from a fixed template row. ${confidenceTone}`;
-  DOM.uncertaintyNote.textContent = `Uncertainty_z comes from cross-event dispersion in the seed dataset, then widens when classification confidence falls. Current confidence: ${Math.round(
+  DOM.marketReadText.textContent = `${config.explanation}${blendSummary} The strongest modeled move over the first three trading days is in ${strongestAsset}.`;
+  DOM.confidenceText.textContent = `Current confidence is ${Math.round(
     classification.confidence * 100,
-  )}% across the supported template set.`;
+  )}%. ${confidenceTone} The reaction paths are learned from ${eventCount} seeded analogs in the local dataset, so treat them as structured directional sketches rather than precise forecasts.`;
 }
 
 function updateClassificationUI(classification) {
@@ -1156,12 +1239,8 @@ function renderAnalogs(classification) {
     item.className = "analog-item";
     item.innerHTML = `
       <div class="analog-date">${analog.event_date}</div>
-      <div class="analog-title">${analog.event_text}</div>
+      ${buildAnalogTitleMarkup(analog)}
       <div class="analog-note">${formatAnalogNote(analog)}</div>
-      <div class="analog-footer">
-        <span class="status-pill">${formatStatusLabel(analog.validation_status)}</span>
-        ${buildSourceLinkMarkup(analog)}
-      </div>
     `;
     DOM.analogList.appendChild(item);
   });
@@ -1181,31 +1260,12 @@ function formatAnalogNote(event) {
   return `Type: ${state.catalog.eventTypes[event.event_type]?.label ?? event.event_type}. Theme: ${event.theme}. Seeded observed peaks: ${topMoves}. Source: ${event.source_hint}.`;
 }
 
-function buildSourceLinkMarkup(event) {
+function buildAnalogTitleMarkup(event) {
   if (!event.source_url) {
-    return `<span class="source-meta">${event.source_hint}</span>`;
+    return `<div class="analog-title">${event.event_text}</div>`;
   }
 
-  const sourceLabel = event.source_hint
-    ? `${event.source_hint} query`
-    : "Reference query";
-
-  return `<a class="source-link" href="${event.source_url}" target="_blank" rel="noreferrer">${sourceLabel}</a>`;
-}
-
-function formatStatusLabel(status) {
-  if (!status) {
-    return "Unlabeled";
-  }
-
-  const statusMap = {
-    news_query_linked_seeded_observation:
-      "Seeded observation · news query",
-    aggregator_query_linked_seeded_observation:
-      "Seeded observation · aggregator query",
-  };
-
-  return statusMap[status] || status.replaceAll("_", " ");
+  return `<a class="analog-title analog-title-link" href="${event.source_url}" target="_blank" rel="noreferrer">${event.event_text}</a>`;
 }
 
 function interpretationForAsset(eventType, assetName, supported) {
@@ -1319,11 +1379,14 @@ function renderHistory() {
 
   state.history.forEach((entry) => {
     const wrapper = document.createElement("div");
-    wrapper.className = "history-item";
+    const theme = themeForKey(themeKeyForEventType(entry.eventType));
+    wrapper.className = "history-item themed-card";
+    wrapper.setAttribute("style", buildThemeVars(theme.color, 0.11));
     wrapper.innerHTML = `
       <div class="history-copy">
         <div class="history-meta-row">
           <span class="mini-pill">${formatDateTime(entry.timestamp)}</span>
+          <span class="mini-pill">${theme.title}</span>
           <span class="mini-pill">${entry.label}</span>
           <span class="mini-pill">Confidence ${Math.round(entry.confidence * 100)}%</span>
         </div>
@@ -1370,6 +1433,62 @@ function formatDateTime(isoString) {
     hour: "numeric",
     minute: "2-digit",
   });
+}
+
+function scheduleTopPanelSync() {
+  window.requestAnimationFrame(() => {
+    syncTopPanelHeights();
+  });
+}
+
+function syncTopPanelHeights() {
+  if (!DOM.inputCard || !DOM.chartCard) {
+    return;
+  }
+
+  if (window.innerWidth <= 1120) {
+    DOM.inputCard.style.height = "";
+    return;
+  }
+
+  DOM.inputCard.style.height = "";
+  const chartHeight = Math.ceil(DOM.chartCard.getBoundingClientRect().height);
+  if (chartHeight > 0) {
+    DOM.inputCard.style.height = `${chartHeight}px`;
+  }
+}
+
+function themeKeyForEventType(eventType) {
+  return EVENT_TYPE_THEME[eventType] || "neutral";
+}
+
+function themeForKey(themeKey) {
+  return THEME_CONFIG[themeKey] || THEME_CONFIG.neutral;
+}
+
+function buildThemeVars(color, backgroundAlpha = 0.1) {
+  return [
+    `--theme-accent:${color}`,
+    `--theme-border:${hexToRgba(color, 0.26)}`,
+    `--theme-bg:${hexToRgba(color, backgroundAlpha)}`,
+    `--theme-soft:${hexToRgba(color, 0.14)}`,
+  ].join(";");
+}
+
+function hexToRgba(hex, alpha) {
+  let normalized = hex.replace("#", "");
+  if (normalized.length === 3) {
+    normalized = normalized
+      .split("")
+      .map((character) => character + character)
+      .join("");
+  }
+
+  const value = Number.parseInt(normalized, 16);
+  const red = (value >> 16) & 255;
+  const green = (value >> 8) & 255;
+  const blue = value & 255;
+  return `rgba(${red}, ${green}, ${blue}, ${alpha})`;
 }
 
 function loadHistory() {
