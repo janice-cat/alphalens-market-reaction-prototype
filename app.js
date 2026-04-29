@@ -147,6 +147,7 @@ const DOM = {
 
 const state = {
   catalog: null,
+  curatedEvents: [],
   events: [],
   calibratedTemplates: {},
   leadLagProfiles: {},
@@ -188,7 +189,7 @@ async function initialize() {
 async function loadDataset() {
   const [catalogResponse, csvResponse] = await Promise.all([
     fetch("./data/event_catalog.json"),
-    fetch("./data/events_seed.csv"),
+    fetch("./data/events_master.csv"),
   ]);
 
   if (!catalogResponse.ok) {
@@ -196,18 +197,18 @@ async function loadDataset() {
   }
 
   if (!csvResponse.ok) {
-    throw new Error(`events_seed.csv returned ${csvResponse.status}`);
+    throw new Error(`events_master.csv returned ${csvResponse.status}`);
   }
 
-  state.catalog = await catalogResponse.json();
-  const parsedEvents = parseCsv(await csvResponse.text())
-    .map((row) => ({
-      ...row,
-      event_date: row.event_date || "",
-    }))
+  const baseCatalog = await catalogResponse.json();
+  const curatedEvents = parseCsv(await csvResponse.text())
+    .map((row) => normalizeCuratedEventRow(row))
     .sort((left, right) => right.event_date.localeCompare(left.event_date));
 
-  const calibration = calibrateDataset(state.catalog, parsedEvents);
+  state.catalog = buildRuntimeCatalog(baseCatalog, curatedEvents);
+  state.curatedEvents = curatedEvents;
+
+  const calibration = calibrateDataset(state.catalog, curatedEvents);
   state.events = calibration.events;
   state.calibratedTemplates = calibration.templates;
   state.leadLagProfiles = calibration.leadLagProfiles;
@@ -331,19 +332,19 @@ function setLoadingState() {
   DOM.confidencePill.textContent = "Confidence --";
   DOM.confidenceFill.style.width = "0%";
   DOM.blendList.innerHTML =
-    '<p class="empty-state">Loading blend weights from the seed calibration set.</p>';
+    '<p class="empty-state">Loading blend weights from the curated gold set.</p>';
   DOM.classificationTheme.textContent = "--";
   DOM.classificationChannels.textContent = "--";
   DOM.classificationRationale.textContent =
-    "Loading event templates and seed events from local data files.";
+    "Loading event taxonomy and curated gold/silver event records from local data files.";
   DOM.analogList.innerHTML =
-    '<p class="empty-state">Loading historical analogs from the seed dataset.</p>';
+    '<p class="empty-state">Loading historical analogs from the curated gold set.</p>';
   DOM.timingList.innerHTML =
-    '<p class="empty-state">Loading ETF reaction stories from the calibrated response templates.</p>';
+    '<p class="empty-state">Loading ETF reaction stories from the gold-set response templates.</p>';
   DOM.marketReadText.textContent =
-    "Loading event taxonomy, templates, and seed data.";
+    "Loading event taxonomy, curated master data, and gold-set response templates.";
   DOM.confidenceText.textContent =
-    "The prototype now loads from local dataset files instead of hardcoded constants.";
+    "The prototype now derives calibration from a master curated dataset with gold and silver tiers.";
 }
 
 function setDatasetErrorState(error) {
@@ -354,13 +355,94 @@ function setDatasetErrorState(error) {
     '<p class="empty-state">Blend breakdown unavailable until the dataset loads.</p>';
   DOM.classificationRationale.textContent = `Could not load local dataset files: ${error.message}`;
   DOM.analogList.innerHTML =
-    '<p class="empty-state">Dataset loading failed. Check the local server and data files.</p>';
+    '<p class="empty-state">Dataset loading failed. Check the local server and curated data files.</p>';
   DOM.timingList.innerHTML =
     '<p class="empty-state">ETF reaction stories are unavailable until the dataset loads.</p>';
   DOM.marketReadText.textContent =
     "The prototype could not load its local data files. Once the dataset is available, event classification and reaction curves will resume.";
   DOM.confidenceText.textContent =
     "This usually means the prototype was opened without the local server or a data file is missing.";
+}
+
+function normalizeCuratedEventRow(row) {
+  const eventType = row.final_event_type || row.event_type || "";
+  const headlineText = row.headline_text || row.event_text || "";
+
+  return {
+    ...row,
+    event_id: row.event_id || "",
+    event_date: row.event_date || "",
+    event_timestamp_utc: row.event_timestamp_utc || "",
+    headline_text: headlineText,
+    event_text: headlineText,
+    event_type: eventType,
+    final_event_type: eventType,
+    theme: row.theme || "",
+    source_query: row.source_query || "",
+    source_hint: row.source_hint || "",
+    source_url: row.source_url || "",
+    tier: row.tier || "",
+    review_status: row.review_status || "",
+    coverage_bucket: row.coverage_bucket || "",
+    channels_hint: row.channels_hint || "",
+    polarity_expected: row.polarity_expected || "",
+    routing_notes: row.routing_notes || "",
+    keyword_additions_suggested: row.keyword_additions_suggested || "",
+    validation_status: row.validation_status || "",
+    contamination_flag: row.contamination_flag || "",
+    benchmark_symbol: row.benchmark_symbol || "",
+    benchmark_adjustment_method: row.benchmark_adjustment_method || "",
+    human_notes: row.human_notes || "",
+  };
+}
+
+function buildRuntimeCatalog(baseCatalog, curatedEvents) {
+  const runtimeCatalog = JSON.parse(JSON.stringify(baseCatalog));
+
+  curatedEvents.forEach((event) => {
+    if (!isReviewedCoverageRow(event) || !runtimeCatalog.eventTypes[event.event_type]) {
+      return;
+    }
+
+    const config = runtimeCatalog.eventTypes[event.event_type];
+    const suggestedTerms = parseSuggestedTerms(event.keyword_additions_suggested);
+
+    suggestedTerms.forEach((term) => {
+      if (!config.keywords[term]) {
+        config.keywords[term] = weightForSuggestedTerm(term);
+      }
+    });
+
+    if (event.coverage_bucket === "existing_type_polarity_bug") {
+      const overridePhrases = suggestedTerms.filter((term) => looksLikeNegatedReliefPhrase(term));
+      config.orientationOverridePhrases = uniqueValues([
+        ...(config.orientationOverridePhrases || []),
+        ...overridePhrases,
+      ]);
+    }
+  });
+
+  return runtimeCatalog;
+}
+
+function parseSuggestedTerms(value) {
+  return uniqueValues(
+    String(value || "")
+      .split(/[\n|,]+/)
+      .map((term) => term.trim().toLowerCase())
+      .filter(Boolean),
+  );
+}
+
+function weightForSuggestedTerm(term) {
+  return term.includes(" ") ? 3 : 2;
+}
+
+function isReviewedCoverageRow(event) {
+  return (
+    ["reviewed", "gold_candidate", "gold_approved"].includes(event.review_status) &&
+    ["existing_type_missing_words", "existing_type_polarity_bug"].includes(event.coverage_bucket)
+  );
 }
 
 function activateTab(tabName) {
@@ -417,6 +499,7 @@ function calibrateDataset(catalog, events) {
     return {
       ...event,
       calibration: parseObservedResponses(event) || buildEventObservation(event, config),
+      leadLagObservation: parseObservedLeadLagResponses(event),
     };
   });
 
@@ -436,7 +519,7 @@ function calibrateDataset(catalog, events) {
     };
 
     calibratedEvents.forEach((event) => {
-      if (event.event_type !== eventType || !event.calibration) {
+      if (!shouldTrainOnEvent(event, eventType) || !event.calibration) {
         return;
       }
 
@@ -447,7 +530,7 @@ function calibrateDataset(catalog, events) {
         sample.assets[assetName].amplitudes.push(observation.amplitude_z);
         sample.assets[assetName].lags.push(observation.lag_days);
         sample.assets[assetName].decays.push(observation.decay);
-        buildResponsePath(observation).forEach((response, index) => {
+        buildLeadLagPathFromEvent(event, assetName, observation).forEach((response, index) => {
           sample.assets[assetName].pathBuckets[index].push(response);
         });
       });
@@ -557,6 +640,32 @@ function parseObservedResponses(event) {
   }
 
   return observed;
+}
+
+function parseObservedLeadLagResponses(event) {
+  const observed = {};
+
+  for (const assetName of Object.keys(ASSETS)) {
+    const lower = assetName.toLowerCase();
+    const horizons = [0, 1, 2, 3].map((horizon) =>
+      Number.parseFloat(event[`observed_${lower}_d${horizon}`]),
+    );
+
+    if (horizons.every((value) => !Number.isNaN(value))) {
+      observed[assetName] = horizons.map((value) => roundTo(value, 4));
+    }
+  }
+
+  return Object.keys(observed).length ? observed : null;
+}
+
+function buildLeadLagPathFromEvent(event, assetName, fallbackObservation) {
+  const measured = event.leadLagObservation?.[assetName];
+  if (measured?.length === 4) {
+    return TIME_GRID.map((t) => roundTo(interpolateMeasuredHorizonPath(measured, t), 4));
+  }
+
+  return buildResponsePath(fallbackObservation);
 }
 
 function buildObservationText(event) {
@@ -786,6 +895,11 @@ function classifyEvent(text) {
   const totalMatched = scores.reduce((sum, item) => sum + item.score, 0);
 
   if (!top || top.score < 4) {
+    const approximateClassification = buildApproximateClassification(scores, normalized);
+    if (approximateClassification) {
+      return approximateClassification;
+    }
+
     return {
       supported: false,
       event_type: "unsupported",
@@ -826,6 +940,55 @@ function classifyEvent(text) {
     confidence,
     rationale,
     components: blendedComponents,
+    approximate: false,
+  };
+}
+
+function buildApproximateClassification(scores, normalizedText) {
+  const positiveScores = scores.filter((item) => item.score > 0);
+  const top = positiveScores[0];
+  if (!top) {
+    return null;
+  }
+
+  const maxMatchedWeight = Math.max(
+    0,
+    ...top.matchedTerms.map((term) => top.config.keywords[term] || 0),
+  );
+  const hasMultipleSignals = top.matchedTerms.length >= 2;
+  const hasEnoughSignal = top.score >= 3 || (top.score >= 2 && hasMultipleSignals) || maxMatchedWeight >= 4;
+
+  if (!hasEnoughSignal) {
+    return null;
+  }
+
+  const component = {
+    eventType: top.eventType,
+    label: top.config.label,
+    tone: top.config.tone,
+    theme: top.config.theme,
+    channels: top.config.channels,
+    matchedTerms: top.matchedTerms,
+    score: top.score,
+    weight: 1,
+    orientation: detectOrientation(top.eventType, normalizedText),
+  };
+  const second = positiveScores[1];
+  const separation = Math.max(0, top.score - (second?.score ?? 0));
+  const confidence = clamp(0.3 + Math.min(top.score, 4) * 0.045 + Math.min(separation, 4) * 0.02, 0.34, 0.54);
+
+  return {
+    supported: true,
+    approximate: true,
+    event_type: top.eventType,
+    primary_event_type: top.eventType,
+    label: top.config.label,
+    tone: top.config.tone,
+    theme: top.config.theme,
+    channels: top.config.channels,
+    confidence,
+    rationale: `Low-signal nearest-template match to ${top.config.label.toLowerCase()} via ${top.matchedTerms.join(", ")}. Review suggested before trusting the scenario.`,
+    components: [component],
   };
 }
 
@@ -855,6 +1018,8 @@ function buildBlendedComponents(scores, normalizedText) {
 }
 
 function detectOrientation(eventType, normalizedText) {
+  const orientationOverridePhrases =
+    state.catalog?.eventTypes?.[eventType]?.orientationOverridePhrases || [];
   const reliefSignals = [
     "ease",
     "eases",
@@ -900,9 +1065,22 @@ function detectOrientation(eventType, normalizedText) {
   const semiconductorContext = ["tariff", "tariffs", "restriction", "restrictions", "export", "control", "controls", "semiconductor", "chip", "chips", "china"];
   const powerContext = ["power", "grid", "electricity", "interconnection", "capacity", "constraint", "constraints", "bottleneck", "load", "transmission"];
   const energyContext = ["oil", "gas", "lng", "shipping", "supply", "sanctions", "conflict", "middle east", "hormuz", "red sea", "energy"];
+  const negatedReliefSignals = [
+    "fail to ease",
+    "fails to ease",
+    "failed to ease",
+    "failure to ease",
+    "not ease",
+    "does not ease",
+    "did not ease",
+    "unable to ease",
+    "no easing",
+    ...orientationOverridePhrases,
+  ];
   const hasVetoedFreeze =
     containsAny(normalizedText, ["veto", "vetoes"]) &&
     containsAny(normalizedText, ["freeze", "freezes"]);
+  const hasNegatedRelief = containsAny(normalizedText, negatedReliefSignals);
 
   if (eventType === "ai_demand") {
     if (containsAny(normalizedText, negativeSignals) && containsAny(normalizedText, aiContext)) {
@@ -922,6 +1100,9 @@ function detectOrientation(eventType, normalizedText) {
   }
 
   if (eventType === "policy_semiconductor") {
+    if (hasNegatedRelief) {
+      return { multiplier: 1, flipped: false };
+    }
     if (containsAny(normalizedText, reliefSignals) && containsAny(normalizedText, semiconductorContext)) {
       return { multiplier: -1, flipped: true };
     }
@@ -929,6 +1110,9 @@ function detectOrientation(eventType, normalizedText) {
   }
 
   if (eventType === "power_bottleneck") {
+    if (hasNegatedRelief) {
+      return { multiplier: 1, flipped: false };
+    }
     if (containsAny(normalizedText, reliefSignals) && containsAny(normalizedText, powerContext)) {
       return { multiplier: -1, flipped: true };
     }
@@ -936,6 +1120,9 @@ function detectOrientation(eventType, normalizedText) {
   }
 
   if (eventType === "geopolitical_energy") {
+    if (hasNegatedRelief) {
+      return { multiplier: 1, flipped: false };
+    }
     if (containsAny(normalizedText, reliefSignals) && containsAny(normalizedText, energyContext)) {
       return { multiplier: -1, flipped: true };
     }
@@ -1418,29 +1605,38 @@ function renderExplanation(classification, scenario) {
   )[0][0];
   const eventCount = scenario.calibrationStats?.eventCount ?? 0;
   const modeConfig = predictionModeConfig(scenario.mode);
-  const confidenceTone =
-    classification.confidence > 0.78
+  const confidenceTone = classification.approximate
+    ? "This is a nearest-template route based on limited in-scope signal, so treat the scenario as a cautious directional sketch."
+    : classification.confidence > 0.78
       ? "The headline maps fairly cleanly into the current event map."
       : "The headline overlaps multiple market channels, so the scenario is more interpretive.";
 
-  const blendSentence = isBlended
-    ? `This read blends ${classification.components
-        .map(
-          (component) =>
-            `${Math.round(component.weight * 100)}% ${component.label.toLowerCase()}`,
-        )
-        .join(" with ")}.`
-    : `This read is driven mainly by ${classification.label.toLowerCase()}.`;
+  const blendSentence = classification.approximate
+    ? `This read anchors on the closest current template: ${classification.label.toLowerCase()}.`
+    : isBlended
+      ? `This read blends ${classification.components
+          .map(
+            (component) =>
+              `${Math.round(component.weight * 100)}% ${component.label.toLowerCase()}`,
+          )
+          .join(" with ")}.`
+      : `This read is driven mainly by ${classification.label.toLowerCase()}.`;
+
+  const leadSentence = classification.approximate
+    ? `The strongest modeled move under this approximate route is ${strongestAsset}.`
+    : `The strongest modeled move in this scenario is ${strongestAsset}.`;
 
   DOM.marketReadText.innerHTML = [
-    escapeHtml(config.explanation),
+    classification.approximate
+      ? "This headline only weakly matches the current taxonomy, so AlphaLens is routing it to the nearest supported template."
+      : escapeHtml(config.explanation),
     `<strong>${escapeHtml(blendSentence)}</strong>`,
     escapeHtml(modeConfig.methodCopy),
-    `<strong>${escapeHtml(`The strongest modeled move in this scenario is ${strongestAsset}.`)}</strong>`,
+    `<strong>${escapeHtml(leadSentence)}</strong>`,
   ].join(" ");
   DOM.confidenceText.textContent = `${modeConfig.label} is active. Current confidence is ${Math.round(
     classification.confidence * 100,
-  )}%. ${confidenceTone} The reaction paths are learned from ${eventCount} seeded analogs in the local dataset, so treat them as structured directional sketches rather than precise forecasts.`;
+  )}%. ${confidenceTone} The reaction paths are learned from ${eventCount} gold-approved analogs in the local dataset, so treat them as structured directional sketches rather than precise forecasts.`;
 }
 
 function updateClassificationUI(classification) {
@@ -1503,7 +1699,7 @@ function renderAnalogs(classification) {
 
   if (!classification.supported) {
     DOM.analogList.innerHTML =
-      '<p class="empty-state">No seeded analogs because this event is outside the current template taxonomy.</p>';
+      '<p class="empty-state">No curated analogs because this event is outside the current template taxonomy.</p>';
     return;
   }
 
@@ -1514,7 +1710,7 @@ function renderAnalogs(classification) {
     ]),
   );
   const analogs = state.events
-    .filter((event) => componentWeights[event.event_type])
+    .filter((event) => componentWeights[event.event_type] && shouldTrainOnEvent(event, event.event_type))
     .sort((left, right) => {
       const weightDelta =
         componentWeights[right.event_type] - componentWeights[left.event_type];
@@ -1553,7 +1749,7 @@ function formatAnalogNote(event) {
 
   return `Type: ${state.catalog.eventTypes[event.event_type]?.label ?? event.event_type}. Theme: ${humanizeDisplayText(
     event.theme,
-  )}. Seeded observed peaks: ${topMoves}. Source: ${event.source_hint}.`;
+  )}. Gold-set observed peaks: ${topMoves}. Source: ${event.source_hint}.`;
 }
 
 function buildAnalogTitleMarkup(event) {
@@ -2149,6 +2345,40 @@ function escapeHtml(value) {
     .replaceAll(">", "&gt;")
     .replaceAll('"', "&quot;")
     .replaceAll("'", "&#39;");
+}
+
+function shouldTrainOnEvent(event, eventType) {
+  return (
+    event.event_type === eventType &&
+    event.tier === "gold" &&
+    event.review_status === "gold_approved" &&
+    !isTruthyFlag(event.contamination_flag)
+  );
+}
+
+function isTruthyFlag(value) {
+  const normalized = String(value || "").trim().toLowerCase();
+  return normalized !== "" && !["0", "false", "no"].includes(normalized);
+}
+
+function interpolateMeasuredHorizonPath(measuredPoints, t) {
+  const clampedT = clamp(t, 0, HORIZON_DAYS);
+  const lowerIndex = Math.floor(clampedT);
+  const upperIndex = Math.min(Math.ceil(clampedT), measuredPoints.length - 1);
+
+  if (lowerIndex === upperIndex) {
+    return measuredPoints[lowerIndex];
+  }
+
+  const lowerValue = measuredPoints[lowerIndex];
+  const upperValue = measuredPoints[upperIndex];
+  const weight = clampedT - lowerIndex;
+
+  return lowerValue + (upperValue - lowerValue) * weight;
+}
+
+function looksLikeNegatedReliefPhrase(term) {
+  return /\b(fail|fails|failed|failure|unable|not|no)\b/.test(term);
 }
 
 function predictionModeConfig(mode) {

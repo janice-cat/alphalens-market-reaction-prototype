@@ -1,0 +1,6 @@
+eval_id,headline_text,expected_bucket,expected_event_type,expected_polarity,notes
+C001,"OpenAI Misses Key Revenue, User Targets in High-Stakes Sprint Toward IPO",out_of_scope_current,,conditional,"Company execution story, not current infra taxonomy."
+C002,Google will invest as much as $40 billion in Anthropic,existing_type_missing_words,ai_demand,positive,Investment/capex-style AI demand signal.
+C003,Anthropic debuts preview of powerful new AI model Mythos in new cybersecurity initiative,out_of_scope_current,,conditional,Model launch should remain out of scope for the current taxonomy.
+C004,Oil prices close at highest level since 2022 as Iran negotiations fail to ease supply fears,existing_type_polarity_bug,geopolitical_energy,mixed,Should remain an energy shock despite the phrase 'fail to ease'.
+C005,The Iran conflict’s energy shocks are not yet fully realized,existing_type_missing_words,geopolitical_energy,mixed,Existing-type vocabulary miss.
