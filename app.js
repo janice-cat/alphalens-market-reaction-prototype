@@ -120,7 +120,7 @@ const DOM = {
   predictionSwitch: document.querySelector("#prediction-switch"),
   empiricalLabel: document.querySelector("#empirical-label"),
   leadLagLabel: document.querySelector("#leadlag-label"),
-  sampleChips: document.querySelector("#sample-chips"),
+  sampleSelect: document.querySelector("#sample-select"),
   classificationCard: document.querySelector(".classification-card"),
   classificationBadge: document.querySelector("#classification-badge"),
   confidencePill: document.querySelector("#confidence-pill"),
@@ -169,11 +169,14 @@ async function initialize() {
 
   try {
     await loadDataset();
-    renderSampleChips();
+    renderSampleOptions();
 
     const firstSample = state.catalog.sampleEvents[0];
     if (firstSample) {
       DOM.input.value = firstSample;
+      if (DOM.sampleSelect) {
+        DOM.sampleSelect.value = firstSample;
+      }
       runAnalysis(firstSample, { persist: false });
       scheduleAutoDemo();
     }
@@ -227,6 +230,9 @@ function bindEvents() {
   DOM.clearButton.addEventListener("click", () => {
     clearDemoSequence();
     DOM.input.value = "";
+    if (DOM.sampleSelect) {
+      DOM.sampleSelect.value = "";
+    }
     DOM.input.focus();
   });
 
@@ -255,6 +261,19 @@ function bindEvents() {
       clearDemoSequence();
       const nextMode = state.predictionMode === "empirical" ? "leadlag" : "empirical";
       setPredictionMode(nextMode, { rerun: true });
+    });
+  }
+
+  if (DOM.sampleSelect) {
+    DOM.sampleSelect.addEventListener("change", () => {
+      const sample = DOM.sampleSelect.value;
+      if (!sample) {
+        return;
+      }
+
+      clearDemoSequence();
+      DOM.input.value = sample;
+      runAnalysis(sample, { persist: true });
     });
   }
 
@@ -354,27 +373,20 @@ function activateTab(tabName) {
   });
 }
 
-function renderSampleChips() {
+function renderSampleOptions() {
   DOM.analyzeButton.disabled = false;
-  DOM.sampleChips.innerHTML = "";
+  if (!DOM.sampleSelect) {
+    return;
+  }
+
+  DOM.sampleSelect.innerHTML = '<option value="">Choose a sample event...</option>';
 
   state.catalog.sampleEvents.forEach((sample) => {
     const classification = classifyEvent(sample);
-    const theme = themeForKey(themeKeyForEventType(classification.event_type));
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "sample-chip";
-    button.setAttribute("style", buildThemeVars(theme.color, 0.12));
-    button.innerHTML = `
-      <span class="sample-chip-meta">${classification.label}</span>
-      <span class="sample-chip-copy">${sampleDisplayText(sample)}</span>
-    `;
-    button.addEventListener("click", () => {
-      clearDemoSequence();
-      DOM.input.value = sample;
-      runAnalysis(sample, { persist: true });
-    });
-    DOM.sampleChips.appendChild(button);
+    const option = document.createElement("option");
+    option.value = sample;
+    option.textContent = `${classification.label} - ${sampleDisplayText(sample)}`;
+    DOM.sampleSelect.appendChild(option);
   });
 }
 
@@ -718,7 +730,14 @@ function runAnalysis(inputText, options = { persist: true }) {
 
   const cleanInput = inputText.trim();
   if (!cleanInput) {
+    if (DOM.sampleSelect) {
+      DOM.sampleSelect.value = "";
+    }
     return null;
+  }
+
+  if (DOM.sampleSelect) {
+    DOM.sampleSelect.value = state.catalog.sampleEvents.includes(cleanInput) ? cleanInput : "";
   }
 
   const classification = classifyEvent(cleanInput);
@@ -1404,16 +1423,21 @@ function renderExplanation(classification, scenario) {
       ? "The headline maps fairly cleanly into the current event map."
       : "The headline overlaps multiple market channels, so the scenario is more interpretive.";
 
-  const blendSummary = isBlended
-    ? ` This read blends ${classification.components
+  const blendSentence = isBlended
+    ? `This read blends ${classification.components
         .map(
           (component) =>
             `${Math.round(component.weight * 100)}% ${component.label.toLowerCase()}`,
         )
         .join(" with ")}.`
-    : ` This read is driven mainly by ${classification.label.toLowerCase()}.`;
+    : `This read is driven mainly by ${classification.label.toLowerCase()}.`;
 
-  DOM.marketReadText.textContent = `${config.explanation}${blendSummary} ${modeConfig.methodCopy} The strongest modeled move in this scenario is ${strongestAsset}.`;
+  DOM.marketReadText.innerHTML = [
+    escapeHtml(config.explanation),
+    `<strong>${escapeHtml(blendSentence)}</strong>`,
+    escapeHtml(modeConfig.methodCopy),
+    `<strong>${escapeHtml(`The strongest modeled move in this scenario is ${strongestAsset}.`)}</strong>`,
+  ].join(" ");
   DOM.confidenceText.textContent = `${modeConfig.label} is active. Current confidence is ${Math.round(
     classification.confidence * 100,
   )}%. ${confidenceTone} The reaction paths are learned from ${eventCount} seeded analogs in the local dataset, so treat them as structured directional sketches rather than precise forecasts.`;
@@ -1427,9 +1451,13 @@ function updateClassificationUI(classification) {
   )}%`;
   DOM.confidenceFill.style.width = `${Math.round(classification.confidence * 100)}%`;
   DOM.classificationTheme.textContent = humanizeDisplayText(classification.theme);
-  DOM.classificationChannels.textContent = classification.channels
-    .map((channel) => humanizeDisplayText(channel))
-    .join(" · ");
+  const visibleChannels = classification.channels
+    .slice(0, 4)
+    .map((channel) => humanizeDisplayText(channel));
+  if (classification.channels.length > 4) {
+    visibleChannels.push(`+${classification.channels.length - 4} more`);
+  }
+  DOM.classificationChannels.textContent = visibleChannels.join(" · ");
   DOM.classificationRationale.textContent = classification.rationale;
   renderBlendMix(classification);
 }
@@ -2112,6 +2140,15 @@ function sampleDisplayText(sample) {
 
 function humanizeDisplayText(value) {
   return String(value || "").replaceAll("_", " ");
+}
+
+function escapeHtml(value) {
+  return String(value || "")
+    .replaceAll("&", "&amp;")
+    .replaceAll("<", "&lt;")
+    .replaceAll(">", "&gt;")
+    .replaceAll('"', "&quot;")
+    .replaceAll("'", "&#39;");
 }
 
 function predictionModeConfig(mode) {

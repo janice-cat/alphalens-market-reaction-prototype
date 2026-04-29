@@ -19,15 +19,30 @@
 
         <nav class="sidebar-nav" aria-label="AlphaLens sections">
           <button class="tab-button active" data-tab="analyze">
-            <span class="nav-icon" aria-hidden="true">A</span>
+            <span class="nav-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z"></path>
+              </svg>
+            </span>
             <span>Analyze Event</span>
           </button>
           <button class="tab-button" data-tab="history">
-            <span class="nav-icon" aria-hidden="true">H</span>
+            <span class="nav-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="9"></circle>
+                <path d="M12 7v5l3 2"></path>
+              </svg>
+            </span>
             <span>History</span>
           </button>
           <button class="tab-button" data-tab="about">
-            <span class="nav-icon" aria-hidden="true">I</span>
+            <span class="nav-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24">
+                <circle cx="12" cy="12" r="9"></circle>
+                <path d="M12 10v6"></path>
+                <path d="M12 7h.01"></path>
+              </svg>
+            </span>
             <span>About</span>
           </button>
         </nav>
@@ -50,8 +65,7 @@
                   <div>
                     <h2>Analyze event</h2>
                     <p class="card-subcopy">
-                      Paste one headline and turn it into a structured cross-sector ETF
-                      reaction path.
+                      Map one headline to a structured cross-sector ETF reaction path.
                     </p>
                   </div>
                 </div>
@@ -101,8 +115,12 @@
                 </div>
 
                 <div class="sample-group">
-                  <p class="sample-label">Sample events</p>
-                  <div id="sample-chips" class="sample-chip-list"></div>
+                  <label class="sample-label" for="sample-select">Sample event</label>
+                  <div class="sample-select-shell">
+                    <select id="sample-select" class="sample-select">
+                      <option value="">Choose a sample event...</option>
+                    </select>
+                  </div>
                 </div>
               </article>
 
@@ -111,7 +129,7 @@
                   <div class="card-heading">
                     <div>
                       <h2>Event Understanding</h2>
-                      <p class="card-kicker">Classification and channel blend</p>
+                      <p class="card-kicker">Primary classification and blend</p>
                     </div>
                   </div>
                   <div class="classification-scroll">
@@ -132,20 +150,23 @@
                       <div id="blend-list" class="blend-list"></div>
                     </div>
 
-                    <dl class="meta-list">
-                      <div>
-                        <dt>Theme</dt>
-                        <dd id="classification-theme">--</dd>
+                    <div class="classification-summary-list">
+                      <div class="classification-summary-row">
+                        <span class="summary-inline-label">Theme</span>
+                        <p id="classification-theme" class="summary-inline-value">--</p>
                       </div>
-                      <div>
-                        <dt>Channels</dt>
-                        <dd id="classification-channels">--</dd>
+                      <div class="classification-summary-row">
+                        <span class="summary-inline-label">Channels</span>
+                        <p id="classification-channels" class="summary-inline-value">--</p>
                       </div>
-                      <div>
-                        <dt>Why Classified This Way</dt>
-                        <dd id="classification-rationale">Paste an event to classify it.</dd>
-                      </div>
-                    </dl>
+                    </div>
+
+                    <details class="classification-details">
+                      <summary>Why this classification</summary>
+                      <p id="classification-rationale" class="classification-rationale">
+                        Paste an event to classify it.
+                      </p>
+                    </details>
                   </div>
                 </article>
 
