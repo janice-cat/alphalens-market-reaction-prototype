@@ -477,6 +477,72 @@ code {
   font-size: 0.84rem;
 }
 
+.demo-overlay {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 50;
+  opacity: 0;
+  transition: opacity 180ms ease;
+}
+
+.demo-overlay.active {
+  opacity: 1;
+}
+
+.demo-cursor {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 42px;
+  height: 42px;
+  opacity: 0;
+  transform: translate(-120px, -120px);
+  transition:
+    transform var(--demo-move-duration, 240ms) cubic-bezier(0.2, 0.8, 0.2, 1),
+    opacity 140ms ease;
+}
+
+.demo-cursor.active {
+  opacity: 1;
+}
+
+.demo-cursor-pointer {
+  position: absolute;
+  inset: 0 auto auto 0;
+  width: 25px;
+  height: 31px;
+  background: linear-gradient(180deg, rgba(248, 252, 255, 0.98), rgba(170, 208, 255, 0.9));
+  clip-path: polygon(0 0, 78% 56%, 52% 64%, 68% 100%, 48% 100%, 35% 68%, 0 86%);
+  filter: drop-shadow(0 10px 14px rgba(15, 34, 62, 0.38));
+  transform: rotate(-10deg);
+}
+
+.demo-cursor-ring {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  width: 30px;
+  height: 30px;
+  border-radius: 999px;
+  border: 1px solid rgba(79, 240, 194, 0.44);
+  background: radial-gradient(circle, rgba(77, 184, 255, 0.2), rgba(77, 184, 255, 0));
+  transition: transform 140ms ease, opacity 140ms ease;
+}
+
+.demo-cursor.is-clicking .demo-cursor-pointer {
+  transform: rotate(-10deg) scale(0.94);
+}
+
+.demo-cursor.is-clicking .demo-cursor-ring {
+  opacity: 0.52;
+  transform: scale(0.72);
+}
+
+body.demo-running #event-input {
+  caret-color: transparent;
+}
+
 .sample-group {
   margin-top: 12px;
 }
@@ -820,6 +886,10 @@ code {
   font-family: "Avenir Next", "Segoe UI", sans-serif;
 }
 
+.chart-series-label {
+  transition: opacity 180ms ease, transform 180ms ease;
+}
+
 .chart-grid {
   stroke: rgba(255, 255, 255, 0.08);
   stroke-width: 1;
@@ -923,6 +993,10 @@ code {
 
 .move-story-item {
   min-height: 136px;
+  transition:
+    opacity 220ms ease,
+    transform 220ms ease,
+    box-shadow 220ms ease;
 }
 
 .move-story-item:not(:last-child)::after {
@@ -1169,6 +1243,24 @@ code {
   text-align: center;
   color: var(--muted-strong);
   line-height: 1.6;
+}
+
+.demo-target-focus {
+  box-shadow: 0 0 0 4px rgba(77, 184, 255, 0.16);
+  border-color: rgba(77, 184, 255, 0.34) !important;
+}
+
+.demo-press {
+  transform: scale(0.98);
+}
+
+.move-story-item.demo-card-hidden {
+  opacity: 0;
+  transform: translateY(14px) scale(0.98);
+}
+
+.move-story-item.demo-card-reveal {
+  box-shadow: 0 0 0 3px rgba(77, 184, 255, 0.1);
 }
 
 .demo-spotlight {

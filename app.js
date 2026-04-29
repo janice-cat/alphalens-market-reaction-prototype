@@ -101,6 +101,14 @@ const SAMPLE_DISPLAY_OVERRIDES = {
     "Federal permitting for AI infrastructure accelerates",
 };
 
+const DEMO_SCRIPT = {
+  headline: "AI demand surges but grid bottlenecks delay new data center capacity",
+  typeDelayMs: 18,
+  moveDurationMs: 240,
+  seriesRevealMs: 340,
+  stepGapMs: 120,
+};
+
 const DOM = {
   tabs: document.querySelectorAll(".tab-button"),
   panels: document.querySelectorAll(".tab-panel"),
@@ -133,6 +141,8 @@ const DOM = {
   confidenceText: document.querySelector("#confidence-text"),
   analogCard: document.querySelector(".analog-card"),
   historyList: document.querySelector("#history-list"),
+  demoOverlay: document.querySelector("#demo-overlay"),
+  demoCursor: document.querySelector("#demo-cursor"),
 };
 
 const state = {
@@ -143,7 +153,9 @@ const state = {
   calibrationStats: {},
   predictionMode: "empirical",
   history: loadHistory(),
-  demoTimers: [],
+  demoRunId: 0,
+  demoActive: false,
+  demoAutoplayTimer: null,
 };
 
 initialize();
@@ -163,6 +175,7 @@ async function initialize() {
     if (firstSample) {
       DOM.input.value = firstSample;
       runAnalysis(firstSample, { persist: false });
+      scheduleAutoDemo();
     }
   } catch (error) {
     setDatasetErrorState(error);
@@ -220,6 +233,22 @@ function bindEvents() {
   if (DOM.playDemoButton) {
     DOM.playDemoButton.addEventListener("click", playDemo);
   }
+
+  document.addEventListener(
+    "pointerdown",
+    (event) => {
+      if (!state.demoActive || event.pointerType === "touch") {
+        return;
+      }
+
+      if (DOM.playDemoButton?.contains(event.target)) {
+        return;
+      }
+
+      clearDemoSequence();
+    },
+    true,
+  );
 
   if (DOM.predictionSwitch) {
     DOM.predictionSwitch.addEventListener("click", () => {
@@ -684,12 +713,12 @@ function getTemplatesForEventType(eventType) {
 
 function runAnalysis(inputText, options = { persist: true }) {
   if (!state.catalog) {
-    return;
+    return null;
   }
 
   const cleanInput = inputText.trim();
   if (!cleanInput) {
-    return;
+    return null;
   }
 
   const classification = classifyEvent(cleanInput);
@@ -704,6 +733,8 @@ function runAnalysis(inputText, options = { persist: true }) {
   if (options.persist) {
     pushHistory(cleanInput, classification, scenario);
   }
+
+  return { classification, scenario };
 }
 
 function classifyEvent(text) {
@@ -1288,31 +1319,27 @@ function renderChart(scenario) {
     const labelPoint = scenario.points[scenario.points.length - 1];
 
     chartParts.push(
-      `<polygon class="band-path" fill="${asset.color}" points="${upperPoints
-        .concat(lowerPoints)
-        .join(" ")}"></polygon>`,
-    );
-    chartParts.push(
-      `<polyline class="line-path" stroke="${asset.color}" points="${linePoints.join(
-        " ",
-      )}"></polyline>`,
-    );
-    chartParts.push(
-      `<text class="chart-axis-label" x="${xScale(labelPoint.t) + 10}" y="${yScale(
-        labelPoint.values[assetName].response,
-      ) + 4}">${assetName}</text>`,
+      `<g class="chart-series" data-asset="${assetName}">
+        <polygon class="band-path" fill="${asset.color}" points="${upperPoints
+          .concat(lowerPoints)
+          .join(" ")}"></polygon>
+        <polyline class="line-path" stroke="${asset.color}" points="${linePoints.join(
+          " ",
+        )}"></polyline>
+        <text class="chart-axis-label chart-series-label" x="${xScale(labelPoint.t) + 10}" y="${yScale(
+          labelPoint.values[assetName].response,
+        ) + 4}">${assetName}</text>
+      </g>`,
     );
   });
 
   DOM.chart.innerHTML = chartParts.join("");
 }
 
-function renderTiming(classification, scenario) {
-  DOM.timingList.innerHTML = "";
+function buildTimingEntries(classification, scenario) {
   const isBlended = (classification.components?.length ?? 0) > 1;
-  const usesLeadLag = scenario.mode === "leadlag";
 
-  const entries = Object.entries(scenario.templates)
+  return Object.entries(scenario.templates)
     .map(([assetName, template]) => {
       const lag = template.lag_days ?? 0;
       return {
@@ -1330,11 +1357,17 @@ function renderTiming(classification, scenario) {
       };
     })
     .sort((left, right) => left.lag - right.lag);
+}
+
+function renderTiming(classification, scenario) {
+  DOM.timingList.innerHTML = "";
+  const entries = buildTimingEntries(classification, scenario);
 
   entries.forEach((entry, index) => {
     entry.timingLabel = timingLabelForRank(index, entries.length);
     const item = document.createElement("div");
     item.className = "move-story-item themed-card";
+    item.dataset.asset = entry.assetName;
     item.setAttribute("style", buildThemeVars(ASSETS[entry.assetName].color, 0.12));
     item.innerHTML = `
       <div class="story-asset-row">
@@ -1673,55 +1706,76 @@ function formatDateTime(isoString) {
   });
 }
 
-function playDemo() {
+async function playDemo() {
   if (!state.catalog?.sampleEvents?.length) {
+    return;
+  }
+
+  if (state.demoActive) {
+    clearDemoSequence();
     return;
   }
 
   clearDemoSequence();
   activateTab("analyze");
+  const runId = state.demoRunId + 1;
+  state.demoRunId = runId;
+  state.demoActive = true;
 
-  const sample = state.catalog.sampleEvents[0];
-  DOM.input.value = sample;
-  runAnalysis(sample, { persist: false });
+  document.body.classList.add("demo-running");
+  if (DOM.demoOverlay) {
+    DOM.demoOverlay.classList.add("active");
+  }
 
   if (DOM.playDemoButton) {
     DOM.playDemoButton.classList.add("is-running");
     DOM.playDemoButton.setAttribute("aria-pressed", "true");
   }
 
-  const steps = [
-    DOM.inputCard,
-    DOM.classificationCard,
-    DOM.chartCard,
-    DOM.moveStorySection,
-    DOM.analogCard,
-  ].filter(Boolean);
-
-  steps.forEach((element, index) => {
-    const timer = window.setTimeout(() => {
-      element.classList.add("demo-spotlight");
-      window.setTimeout(() => {
-        element.classList.remove("demo-spotlight");
-      }, 760);
-    }, index * 420);
-
-    state.demoTimers.push(timer);
-  });
-
-  const finalTimer = window.setTimeout(() => {
-    if (DOM.playDemoButton) {
-      DOM.playDemoButton.classList.remove("is-running");
-      DOM.playDemoButton.setAttribute("aria-pressed", "false");
+  try {
+    await runDemoSequence(runId);
+  } finally {
+    if (runId === state.demoRunId) {
+      state.demoActive = false;
+      document.body.classList.remove("demo-running");
+      if (DOM.demoOverlay) {
+        DOM.demoOverlay.classList.remove("active");
+      }
+      if (DOM.demoCursor) {
+        DOM.demoCursor.classList.remove("active", "is-clicking");
+      }
+      if (DOM.playDemoButton) {
+        DOM.playDemoButton.classList.remove("is-running");
+        DOM.playDemoButton.setAttribute("aria-pressed", "false");
+      }
     }
-  }, steps.length * 420 + 900);
-
-  state.demoTimers.push(finalTimer);
+  }
 }
 
 function clearDemoSequence() {
-  state.demoTimers.forEach((timer) => window.clearTimeout(timer));
-  state.demoTimers = [];
+  if (state.demoAutoplayTimer) {
+    window.clearTimeout(state.demoAutoplayTimer);
+    state.demoAutoplayTimer = null;
+  }
+
+  state.demoRunId += 1;
+  state.demoActive = false;
+  document.body.classList.remove("demo-running");
+
+  if (DOM.demoOverlay) {
+    DOM.demoOverlay.classList.remove("active");
+  }
+
+  if (DOM.demoCursor) {
+    DOM.demoCursor.classList.remove("active", "is-clicking");
+    DOM.demoCursor.style.removeProperty("transform");
+    DOM.demoCursor.style.removeProperty("--demo-move-duration");
+  }
+
+  if (DOM.playDemoButton) {
+    DOM.playDemoButton.classList.remove("is-running");
+    DOM.playDemoButton.setAttribute("aria-pressed", "false");
+  }
 
   [
     DOM.inputCard,
@@ -1729,9 +1783,319 @@ function clearDemoSequence() {
     DOM.chartCard,
     DOM.moveStorySection,
     DOM.analogCard,
+    DOM.analyzeButton,
+    DOM.predictionSwitch,
   ]
     .filter(Boolean)
-    .forEach((element) => element.classList.remove("demo-spotlight"));
+    .forEach((element) =>
+      element.classList.remove("demo-spotlight", "demo-target-focus", "demo-press"),
+    );
+
+  DOM.chart
+    ?.querySelectorAll(".chart-series")
+    .forEach((group) => resetChartSeriesAnimation(group));
+
+  DOM.timingList
+    ?.querySelectorAll(".move-story-item")
+    .forEach((item) => item.classList.remove("demo-card-hidden", "demo-card-reveal"));
+}
+
+function scheduleAutoDemo() {
+  if (state.demoAutoplayTimer) {
+    window.clearTimeout(state.demoAutoplayTimer);
+  }
+
+  state.demoAutoplayTimer = window.setTimeout(() => {
+    state.demoAutoplayTimer = null;
+    playDemo();
+  }, 440);
+}
+
+async function runDemoSequence(runId) {
+  const headline = getDemoHeadline();
+
+  setPredictionMode("empirical", { rerun: false });
+  DOM.input.value = "";
+  await nextPaint();
+  if (!isDemoRunActive(runId)) {
+    return;
+  }
+
+  await moveDemoCursorTo(DOM.input, { xFactor: 0.2, yFactor: 0.36 }, runId);
+  DOM.input.focus({ preventScroll: true });
+  DOM.inputCard?.classList.add("demo-target-focus");
+  await typeDemoHeadline(headline, runId);
+  DOM.inputCard?.classList.remove("demo-target-focus");
+
+  if (!isDemoRunActive(runId)) {
+    return;
+  }
+
+  await delay(120);
+  await moveDemoCursorTo(DOM.analyzeButton, { xFactor: 0.5, yFactor: 0.5 }, runId);
+  await clickDemoTarget(DOM.analyzeButton, runId);
+  DOM.input.value = headline;
+  const empiricalResult = runAnalysis(headline, { persist: false });
+  flashDemoSpotlight(DOM.classificationCard);
+  await delay(300);
+
+  if (!isDemoRunActive(runId) || !empiricalResult) {
+    return;
+  }
+
+  await moveDemoCursorTo(DOM.predictionSwitch, { xFactor: 0.55, yFactor: 0.5 }, runId);
+  await clickDemoTarget(DOM.predictionSwitch, runId);
+  setPredictionMode("leadlag", { rerun: false });
+  const leadLagResult = runAnalysis(headline, { persist: false });
+  flashDemoSpotlight(DOM.chartCard);
+  flashDemoSpotlight(DOM.moveStorySection);
+  await nextPaint();
+
+  if (!isDemoRunActive(runId) || !leadLagResult) {
+    return;
+  }
+
+  const orderedAssets = buildTimingEntries(
+    leadLagResult.classification,
+    leadLagResult.scenario,
+  ).map((entry) => entry.assetName);
+
+  prepareDemoChartAnimation(orderedAssets);
+  prepareDemoTimingAnimation(orderedAssets);
+  await delay(120);
+  await animateLeadLagReveal(orderedAssets, runId);
+  await delay(280);
+}
+
+function getDemoHeadline() {
+  if (state.catalog?.sampleEvents?.includes(DEMO_SCRIPT.headline)) {
+    return DEMO_SCRIPT.headline;
+  }
+
+  return (
+    state.catalog?.sampleEvents?.find((sample) =>
+      sample.toLowerCase().includes("grid bottleneck"),
+    ) ||
+    state.catalog?.sampleEvents?.[0] ||
+    DEMO_SCRIPT.headline
+  );
+}
+
+function isDemoRunActive(runId) {
+  return state.demoActive && state.demoRunId === runId;
+}
+
+function delay(ms) {
+  return new Promise((resolve) => {
+    window.setTimeout(resolve, ms);
+  });
+}
+
+function nextPaint() {
+  return new Promise((resolve) => {
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(resolve);
+    });
+  });
+}
+
+async function moveDemoCursorTo(
+  element,
+  {
+    xFactor = 0.5,
+    yFactor = 0.5,
+    offsetX = 0,
+    offsetY = 0,
+    duration = DEMO_SCRIPT.moveDurationMs,
+  } = {},
+  runId,
+) {
+  if (!DOM.demoCursor || !element || !isDemoRunActive(runId)) {
+    return;
+  }
+
+  const rect = element.getBoundingClientRect();
+  const x = rect.left + rect.width * xFactor + offsetX;
+  const y = rect.top + rect.height * yFactor + offsetY;
+
+  DOM.demoCursor.classList.add("active");
+  DOM.demoCursor.style.setProperty("--demo-move-duration", `${duration}ms`);
+  DOM.demoCursor.style.transform = `translate(${Math.round(x)}px, ${Math.round(y)}px)`;
+
+  await delay(duration + 40);
+}
+
+async function typeDemoHeadline(text, runId) {
+  DOM.input.value = "";
+
+  for (const char of text) {
+    if (!isDemoRunActive(runId)) {
+      return;
+    }
+
+    DOM.input.value += char;
+    await delay(DEMO_SCRIPT.typeDelayMs);
+  }
+}
+
+async function clickDemoTarget(element, runId) {
+  if (!element || !isDemoRunActive(runId)) {
+    return;
+  }
+
+  element.classList.add("demo-target-focus", "demo-press");
+  if (DOM.demoCursor) {
+    DOM.demoCursor.classList.add("is-clicking");
+  }
+
+  await delay(130);
+
+  element.classList.remove("demo-press");
+  if (DOM.demoCursor) {
+    DOM.demoCursor.classList.remove("is-clicking");
+  }
+
+  await delay(70);
+  element.classList.remove("demo-target-focus");
+}
+
+function flashDemoSpotlight(element) {
+  if (!element) {
+    return;
+  }
+
+  element.classList.remove("demo-spotlight");
+  void element.offsetWidth;
+  element.classList.add("demo-spotlight");
+  window.setTimeout(() => {
+    element.classList.remove("demo-spotlight");
+  }, 760);
+}
+
+function prepareDemoChartAnimation(assetOrder) {
+  if (!DOM.chart) {
+    return;
+  }
+
+  assetOrder.forEach((assetName) => {
+    const group = DOM.chart.querySelector(`.chart-series[data-asset="${assetName}"]`);
+    if (!group) {
+      return;
+    }
+
+    const line = group.querySelector(".line-path");
+    const band = group.querySelector(".band-path");
+    const label = group.querySelector(".chart-series-label");
+    const lineLength = line?.getTotalLength?.() ?? 0;
+
+    if (line) {
+      line.style.transition = "none";
+      line.style.strokeDasharray = `${lineLength}`;
+      line.style.strokeDashoffset = `${lineLength}`;
+    }
+
+    if (band) {
+      band.style.opacity = "0";
+      band.style.transition = "none";
+    }
+
+    if (label) {
+      label.style.opacity = "0";
+      label.style.transform = "translateY(6px)";
+      label.style.transition = "none";
+    }
+  });
+
+  void DOM.chart.getBoundingClientRect();
+}
+
+function revealChartSeries(assetName) {
+  const group = DOM.chart?.querySelector(`.chart-series[data-asset="${assetName}"]`);
+  if (!group) {
+    return;
+  }
+
+  const line = group.querySelector(".line-path");
+  const band = group.querySelector(".band-path");
+  const label = group.querySelector(".chart-series-label");
+
+  if (line) {
+    line.style.transition = `stroke-dashoffset ${DEMO_SCRIPT.seriesRevealMs}ms ease`;
+    line.style.strokeDashoffset = "0";
+  }
+
+  if (band) {
+    band.style.transition = "opacity 220ms ease";
+    band.style.opacity = "0.16";
+  }
+
+  if (label) {
+    label.style.transition = "opacity 220ms ease, transform 220ms ease";
+    label.style.opacity = "1";
+    label.style.transform = "translateY(0)";
+  }
+}
+
+function resetChartSeriesAnimation(group) {
+  const line = group.querySelector(".line-path");
+  const band = group.querySelector(".band-path");
+  const label = group.querySelector(".chart-series-label");
+
+  if (line) {
+    line.style.removeProperty("transition");
+    line.style.removeProperty("stroke-dasharray");
+    line.style.removeProperty("stroke-dashoffset");
+  }
+
+  if (band) {
+    band.style.removeProperty("opacity");
+    band.style.removeProperty("transition");
+  }
+
+  if (label) {
+    label.style.removeProperty("opacity");
+    label.style.removeProperty("transform");
+    label.style.removeProperty("transition");
+  }
+}
+
+function prepareDemoTimingAnimation(assetOrder) {
+  if (!DOM.timingList) {
+    return;
+  }
+
+  assetOrder.forEach((assetName) => {
+    const card = DOM.timingList.querySelector(`.move-story-item[data-asset="${assetName}"]`);
+    if (card) {
+      card.classList.add("demo-card-hidden");
+    }
+  });
+}
+
+function revealTimingCard(assetName) {
+  const card = DOM.timingList?.querySelector(`.move-story-item[data-asset="${assetName}"]`);
+  if (!card) {
+    return;
+  }
+
+  card.classList.remove("demo-card-hidden");
+  card.classList.add("demo-card-reveal");
+  window.setTimeout(() => {
+    card.classList.remove("demo-card-reveal");
+  }, 420);
+}
+
+async function animateLeadLagReveal(assetOrder, runId) {
+  for (const assetName of assetOrder) {
+    if (!isDemoRunActive(runId)) {
+      return;
+    }
+
+    revealChartSeries(assetName);
+    await delay(DEMO_SCRIPT.stepGapMs);
+    revealTimingCard(assetName);
+    await delay(DEMO_SCRIPT.stepGapMs + 40);
+  }
 }
 
 function themeKeyForEventType(eventType) {
