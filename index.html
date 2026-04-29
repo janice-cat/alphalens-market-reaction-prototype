@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AlphaLens</title>
-    <link rel="stylesheet" href="./styles.css" />
+    <link rel="stylesheet" href="./styles.css?v=20260428" />
   </head>
   <body>
     <div class="page-shell">
@@ -45,6 +45,33 @@
                 <div class="action-row">
                   <button id="analyze-button" class="primary-button">Analyze Event</button>
                   <button id="clear-button" class="secondary-button">Clear</button>
+                </div>
+
+                <div class="prediction-mode-panel">
+                  <div class="prediction-mode-heading">
+                    <span class="prediction-mode-title">Prediction Mode</span>
+                    <span id="prediction-mode-note" class="prediction-mode-note"
+                      >Compare the baseline template against horizon-based propagation</span
+                    >
+                  </div>
+                  <div class="prediction-mode-toggle" aria-label="Prediction mode selector">
+                    <button
+                      type="button"
+                      class="mode-button active"
+                      data-prediction-mode="empirical"
+                      aria-pressed="true"
+                    >
+                      Empirical
+                    </button>
+                    <button
+                      type="button"
+                      class="mode-button"
+                      data-prediction-mode="leadlag"
+                      aria-pressed="false"
+                    >
+                      Lead-Lag
+                    </button>
+                  </div>
                 </div>
 
                 <div class="sample-group">
@@ -104,11 +131,14 @@
             <div class="main-stage">
               <article class="card chart-card">
                 <div class="card-heading chart-heading">
-                  <div>
+                  <div class="chart-heading-copy">
                     <h2>Reaction Trajectory</h2>
-                    <p class="subtle-copy">
+                    <div class="chart-heading-meta">
+                      <p id="chart-subtitle" class="subtle-copy">
                       0-3 day reaction paths with uncertainty bands
-                    </p>
+                      </p>
+                      <span id="chart-mode-badge" class="mode-badge">Empirical Template</span>
+                    </div>
                   </div>
                   <div class="legend" id="chart-legend"></div>
                 </div>
@@ -122,7 +152,7 @@
                 <article class="card timing-card">
                   <div class="card-heading">
                     <h2>Timing / Lead-Lag</h2>
-                    <span class="card-kicker">Who moves first</span>
+                    <span id="timing-kicker" class="card-kicker">Who moves first</span>
                   </div>
                   <div id="timing-list" class="timing-list"></div>
                 </article>
@@ -243,6 +273,6 @@
       </main>
     </div>
 
-    <script src="./app.js" defer></script>
+    <script src="./app.js?v=20260428" defer></script>
   </body>
 </html>

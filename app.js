@@ -1,6 +1,31 @@
 const STORAGE_KEY = "alphalens-prototype-history";
 const HORIZON_DAYS = 3;
 const POINT_COUNT = 61;
+const TIME_GRID = Array.from(
+  { length: POINT_COUNT },
+  (_, index) => (HORIZON_DAYS / (POINT_COUNT - 1)) * index,
+);
+
+const PREDICTION_MODES = {
+  empirical: {
+    label: "Empirical Template",
+    shortLabel: "Empirical",
+    chartSubtitle: "Blended template path over the next 0-3 trading days",
+    timingKicker: "Average template timing by asset",
+    toggleNote: "Compare the baseline template against horizon-based propagation",
+    methodCopy:
+      "Empirical mode blends average amplitude, lag, and decay templates before drawing the scenario path.",
+  },
+  leadlag: {
+    label: "Lead-Lag",
+    shortLabel: "Lead-Lag",
+    chartSubtitle: "Blended horizon-response path over the next 0-3 trading days",
+    timingKicker: "Peak timing from blended horizon paths",
+    toggleNote: "Compare the baseline template against horizon-based propagation",
+    methodCopy:
+      "Lead-Lag mode blends averaged horizon response paths directly, preserving who tends to move first and who follows later.",
+  },
+};
 
 const ASSETS = {
   SOXX: {
@@ -69,6 +94,7 @@ const DOM = {
   inputCard: document.querySelector(".input-card"),
   analyzeButton: document.querySelector("#analyze-button"),
   clearButton: document.querySelector("#clear-button"),
+  predictionModeButtons: document.querySelectorAll("[data-prediction-mode]"),
   sampleChips: document.querySelector("#sample-chips"),
   classificationBadge: document.querySelector("#classification-badge"),
   confidencePill: document.querySelector("#confidence-pill"),
@@ -81,7 +107,11 @@ const DOM = {
   chart: document.querySelector("#reaction-chart"),
   chartCard: document.querySelector(".chart-card"),
   chartLegend: document.querySelector("#chart-legend"),
+  chartSubtitle: document.querySelector("#chart-subtitle"),
+  chartModeBadge: document.querySelector("#chart-mode-badge"),
+  predictionModeNote: document.querySelector("#prediction-mode-note"),
   timingList: document.querySelector("#timing-list"),
+  timingKicker: document.querySelector("#timing-kicker"),
   marketReadText: document.querySelector("#market-read-text"),
   confidenceText: document.querySelector("#confidence-text"),
   historyList: document.querySelector("#history-list"),
@@ -91,7 +121,9 @@ const state = {
   catalog: null,
   events: [],
   calibratedTemplates: {},
+  leadLagProfiles: {},
   calibrationStats: {},
+  predictionMode: "empirical",
   history: loadHistory(),
 };
 
@@ -101,6 +133,7 @@ async function initialize() {
   renderLegend();
   renderHistory();
   bindEvents();
+  updatePredictionModeUI();
   setLoadingState();
 
   try {
@@ -142,6 +175,7 @@ async function loadDataset() {
   const calibration = calibrateDataset(state.catalog, parsedEvents);
   state.events = calibration.events;
   state.calibratedTemplates = calibration.templates;
+  state.leadLagProfiles = calibration.leadLagProfiles;
   state.calibrationStats = calibration.stats;
 }
 
@@ -159,6 +193,12 @@ function bindEvents() {
     DOM.input.focus();
   });
 
+  DOM.predictionModeButtons.forEach((button) => {
+    button.addEventListener("click", () => {
+      setPredictionMode(button.dataset.predictionMode, { rerun: true });
+    });
+  });
+
   DOM.input.addEventListener("keydown", (event) => {
     if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
       runAnalysis(DOM.input.value, { persist: true });
@@ -166,6 +206,45 @@ function bindEvents() {
   });
 
   window.addEventListener("resize", scheduleTopPanelSync);
+}
+
+function setPredictionMode(mode, options = { rerun: false }) {
+  if (!PREDICTION_MODES[mode] || state.predictionMode === mode) {
+    return;
+  }
+
+  state.predictionMode = mode;
+  updatePredictionModeUI();
+
+  if (options.rerun && state.catalog && DOM.input.value.trim()) {
+    runAnalysis(DOM.input.value, { persist: false });
+  }
+}
+
+function updatePredictionModeUI() {
+  const modeConfig = predictionModeConfig(state.predictionMode);
+
+  DOM.predictionModeButtons.forEach((button) => {
+    const isActive = button.dataset.predictionMode === state.predictionMode;
+    button.classList.toggle("active", isActive);
+    button.setAttribute("aria-pressed", isActive ? "true" : "false");
+  });
+
+  if (DOM.chartSubtitle) {
+    DOM.chartSubtitle.textContent = modeConfig.chartSubtitle;
+  }
+
+  if (DOM.chartModeBadge) {
+    DOM.chartModeBadge.textContent = modeConfig.label;
+  }
+
+  if (DOM.predictionModeNote) {
+    DOM.predictionModeNote.textContent = modeConfig.toggleNote;
+  }
+
+  if (DOM.timingKicker) {
+    DOM.timingKicker.textContent = modeConfig.timingKicker;
+  }
 }
 
 function setLoadingState() {
@@ -303,6 +382,7 @@ function calibrateDataset(catalog, events) {
 
   const stats = {};
   const templates = {};
+  const leadLagProfiles = {};
 
   Object.entries(catalog.eventTypes).forEach(([eventType, config]) => {
     const sample = {
@@ -311,6 +391,7 @@ function calibrateDataset(catalog, events) {
         amplitudes: [],
         lags: [],
         decays: [],
+        pathBuckets: TIME_GRID.map(() => []),
       })),
     };
 
@@ -326,6 +407,9 @@ function calibrateDataset(catalog, events) {
         sample.assets[assetName].amplitudes.push(observation.amplitude_z);
         sample.assets[assetName].lags.push(observation.lag_days);
         sample.assets[assetName].decays.push(observation.decay);
+        buildResponsePath(observation).forEach((response, index) => {
+          sample.assets[assetName].pathBuckets[index].push(response);
+        });
       });
     });
 
@@ -344,6 +428,24 @@ function calibrateDataset(catalog, events) {
       };
     });
 
+    leadLagProfiles[eventType] = mapValues(config.templates, (fallbackTemplate, assetName) => {
+      const assetSample = sample.assets[assetName];
+
+      if (assetSample.amplitudes.length === 0) {
+        return {
+          responses: buildResponsePath(fallbackTemplate).map((value) => roundTo(value, 4)),
+          uncertainty: TIME_GRID.map(() => roundTo(fallbackTemplate.uncertainty_z, 4)),
+        };
+      }
+
+      return {
+        responses: assetSample.pathBuckets.map((bucket) => roundTo(mean(bucket), 4)),
+        uncertainty: assetSample.pathBuckets.map((bucket) =>
+          roundTo(clamp(standardDeviation(bucket), 0.08, 0.95), 4),
+        ),
+      };
+    });
+
     stats[eventType] = {
       eventCount: sample.eventCount,
       assets: mapValues(sample.assets, (assetSample) => ({
@@ -359,6 +461,7 @@ function calibrateDataset(catalog, events) {
   return {
     events: calibratedEvents,
     templates,
+    leadLagProfiles,
     stats,
   };
 }
@@ -591,7 +694,7 @@ function runAnalysis(inputText, options = { persist: true }) {
   }
 
   const classification = classifyEvent(cleanInput);
-  const scenario = buildScenario(classification);
+  const scenario = buildScenario(classification, state.predictionMode);
 
   updateClassificationUI(classification);
   renderAnalogs(classification);
@@ -836,19 +939,25 @@ function deriveClassificationTone(components) {
   return tones.length === 1 ? tones[0] : "caution";
 }
 
-function buildScenario(classification) {
-  if (!classification.supported) {
-    return buildUnsupportedScenario();
+function buildScenario(classification, predictionMode = state.predictionMode) {
+  if (predictionMode === "leadlag") {
+    return buildLeadLagScenario(classification);
   }
 
-  const primaryConfig = state.catalog.eventTypes[classification.event_type];
+  return buildEmpiricalScenario(classification);
+}
+
+function buildEmpiricalScenario(classification) {
+  if (!classification.supported) {
+    return buildUnsupportedScenario("empirical");
+  }
+
   const blendedTemplates = buildBlendedTemplates(classification.components);
   const blendedStats = buildBlendedCalibrationStats(classification.components);
   const confidencePenalty = (1 - classification.confidence) * 0.45;
   const points = [];
 
-  for (let index = 0; index < POINT_COUNT; index += 1) {
-    const t = (HORIZON_DAYS / (POINT_COUNT - 1)) * index;
+  for (const t of TIME_GRID) {
     const row = { t, values: {} };
 
     Object.entries(blendedTemplates).forEach(([assetName, template]) => {
@@ -868,6 +977,8 @@ function buildScenario(classification) {
 
   return {
     supported: true,
+    mode: "empirical",
+    modeLabel: predictionModeConfig("empirical").label,
     eventType: classification.event_type,
     label: classification.label,
     points,
@@ -877,6 +988,41 @@ function buildScenario(classification) {
       ...template,
       uncertainty_z: template.uncertainty_z + confidencePenalty,
     })),
+  };
+}
+
+function buildLeadLagScenario(classification) {
+  if (!classification.supported) {
+    return buildUnsupportedScenario("leadlag");
+  }
+
+  const blendedProfiles = buildBlendedLeadLagProfiles(classification.components);
+  const blendedStats = buildBlendedCalibrationStats(classification.components);
+  const confidencePenalty = (1 - classification.confidence) * 0.45;
+  const points = TIME_GRID.map((t, index) => ({
+    t,
+    values: mapValues(ASSETS, (_, assetName) => {
+      const response = blendedProfiles[assetName].responses[index];
+      const uncertainty = blendedProfiles[assetName].uncertainty[index] + confidencePenalty;
+
+      return {
+        response,
+        upper: response + uncertainty,
+        lower: response - uncertainty,
+      };
+    }),
+  }));
+
+  return {
+    supported: true,
+    mode: "leadlag",
+    modeLabel: predictionModeConfig("leadlag").label,
+    eventType: classification.event_type,
+    label: classification.label,
+    points,
+    calibrationStats: blendedStats,
+    components: classification.components,
+    templates: summarizeScenarioTemplates(points),
   };
 }
 
@@ -928,6 +1074,48 @@ function buildBlendedTemplates(components) {
   });
 }
 
+function buildBlendedLeadLagProfiles(components) {
+  return mapValues(ASSETS, (_, assetName) => {
+    const blendedResponses = TIME_GRID.map(() => 0);
+    const baseUncertainty = TIME_GRID.map(() => 0);
+    const contributionSeries = [];
+
+    components.forEach((component) => {
+      const profile = getLeadLagProfileForEventType(component.eventType)[assetName];
+      const signedResponses = profile.responses.map(
+        (response) => response * component.orientation.multiplier,
+      );
+
+      contributionSeries.push({
+        weight: component.weight,
+        responses: signedResponses,
+      });
+
+      signedResponses.forEach((response, index) => {
+        blendedResponses[index] += component.weight * response;
+        baseUncertainty[index] += component.weight * profile.uncertainty[index];
+      });
+    });
+
+    const disagreement = TIME_GRID.map((_, index) =>
+      Math.sqrt(
+        contributionSeries.reduce(
+          (sum, series) =>
+            sum + series.weight * (series.responses[index] - blendedResponses[index]) ** 2,
+          0,
+        ),
+      ),
+    );
+
+    return {
+      responses: blendedResponses.map((response) => roundTo(response, 4)),
+      uncertainty: baseUncertainty.map((uncertainty, index) =>
+        roundTo(clamp(uncertainty + disagreement[index] * 0.35, 0.16, 1.05), 4),
+      ),
+    };
+  });
+}
+
 function buildBlendedCalibrationStats(components) {
   return {
     eventCount: components.reduce(
@@ -944,11 +1132,10 @@ function buildBlendedCalibrationStats(components) {
   };
 }
 
-function buildUnsupportedScenario() {
+function buildUnsupportedScenario(mode = "empirical") {
   const points = [];
 
-  for (let index = 0; index < POINT_COUNT; index += 1) {
-    const t = (HORIZON_DAYS / (POINT_COUNT - 1)) * index;
+  for (const t of TIME_GRID) {
     const row = { t, values: {} };
 
     Object.keys(ASSETS).forEach((assetName) => {
@@ -964,6 +1151,8 @@ function buildUnsupportedScenario() {
 
   return {
     supported: false,
+    mode,
+    modeLabel: predictionModeConfig(mode).label,
     label: "Unsupported Template",
     points,
     templates: mapValues(ASSETS, () => ({
@@ -979,6 +1168,45 @@ function responseKernel(t, lagDays, decay) {
   const ramp = smoothstep(-0.16, 0.22, x);
   const decayTerm = x < 0 ? 1 : Math.exp(-x / decay);
   return ramp * decayTerm;
+}
+
+function buildResponsePath(template) {
+  return TIME_GRID.map((t) => template.amplitude_z * responseKernel(t, template.lag_days, template.decay));
+}
+
+function getLeadLagProfileForEventType(eventType) {
+  if (state.leadLagProfiles[eventType]) {
+    return state.leadLagProfiles[eventType];
+  }
+
+  return mapValues(getTemplatesForEventType(eventType), (template) => ({
+    responses: buildResponsePath(template).map((value) => roundTo(value, 4)),
+    uncertainty: TIME_GRID.map(() => roundTo(template.uncertainty_z, 4)),
+  }));
+}
+
+function summarizeScenarioTemplates(points) {
+  return mapValues(ASSETS, (_, assetName) => {
+    let peak = { response: 0, t: 0, uncertainty: 0 };
+
+    points.forEach((point) => {
+      const current = point.values[assetName];
+      if (Math.abs(current.response) > Math.abs(peak.response)) {
+        peak = {
+          response: current.response,
+          t: point.t,
+          uncertainty: (current.upper - current.lower) / 2,
+        };
+      }
+    });
+
+    return {
+      amplitude_z: roundTo(peak.response, 2),
+      lag_days: roundTo(peak.t, 2),
+      decay: null,
+      uncertainty_z: roundTo(peak.uncertainty, 2),
+    };
+  });
 }
 
 function smoothstep(edge0, edge1, x) {
@@ -1084,6 +1312,7 @@ function renderChart(scenario) {
 function renderTiming(classification, scenario) {
   DOM.timingList.innerHTML = "";
   const isBlended = (classification.components?.length ?? 0) > 1;
+  const usesLeadLag = scenario.mode === "leadlag";
 
   const entries = Object.entries(scenario.templates)
     .map(([assetName, template]) => {
@@ -1112,9 +1341,15 @@ function renderTiming(classification, scenario) {
       <div class="timing-copy">
         <div class="timing-meta">${entry.assetName} · ${ASSETS[entry.assetName].label}</div>
         <div class="timing-title">${entry.interpretation}</div>
-        <div class="history-summary">Peak modeled response ${formatSigned(entry.amplitude)} z with lag ${
-      entry.lag === null ? "--" : `${entry.lag.toFixed(1)}d`
-    }.</div>
+        <div class="history-summary">${
+          usesLeadLag ? "Peak horizon response" : "Peak modeled response"
+        } ${formatSigned(entry.amplitude)} z ${
+      entry.lag === null
+        ? "with conditional timing."
+        : usesLeadLag
+          ? `around Day ${entry.lag.toFixed(1)}.`
+          : `with lag ${entry.lag.toFixed(1)}d.`
+    }</div>
       </div>
       <div class="timing-badge">${entry.timingLabel}</div>
     `;
@@ -1137,6 +1372,7 @@ function renderExplanation(classification, scenario) {
     (left, right) => Math.abs(right[1].amplitude_z) - Math.abs(left[1].amplitude_z),
   )[0][0];
   const eventCount = scenario.calibrationStats?.eventCount ?? 0;
+  const modeConfig = predictionModeConfig(scenario.mode);
   const confidenceTone =
     classification.confidence > 0.78
       ? "The headline maps fairly cleanly into the current event map."
@@ -1151,8 +1387,8 @@ function renderExplanation(classification, scenario) {
         .join(" with ")}.`
     : ` This read is driven mainly by ${classification.label.toLowerCase()}.`;
 
-  DOM.marketReadText.textContent = `${config.explanation}${blendSummary} The strongest modeled move over the first three trading days is in ${strongestAsset}.`;
-  DOM.confidenceText.textContent = `Current confidence is ${Math.round(
+  DOM.marketReadText.textContent = `${config.explanation}${blendSummary} ${modeConfig.methodCopy} The strongest modeled move over the first three trading days is in ${strongestAsset}.`;
+  DOM.confidenceText.textContent = `${modeConfig.label} is active. Current confidence is ${Math.round(
     classification.confidence * 100,
   )}%. ${confidenceTone} The reaction paths are learned from ${eventCount} seeded analogs in the local dataset, so treat them as structured directional sketches rather than precise forecasts.`;
 }
@@ -1359,6 +1595,7 @@ function pushHistory(inputText, classification, scenario) {
     inputText,
     label: classification.label,
     eventType: classification.event_type,
+    mode: scenario.mode,
     confidence: classification.confidence,
     summary,
   };
@@ -1388,6 +1625,7 @@ function renderHistory() {
           <span class="mini-pill">${formatDateTime(entry.timestamp)}</span>
           <span class="mini-pill">${theme.title}</span>
           <span class="mini-pill">${entry.label}</span>
+          <span class="mini-pill">${predictionModeConfig(entry.mode).shortLabel}</span>
           <span class="mini-pill">Confidence ${Math.round(entry.confidence * 100)}%</span>
         </div>
         <div class="history-title">${entry.inputText}</div>
@@ -1398,6 +1636,7 @@ function renderHistory() {
 
     wrapper.querySelector(".history-reload").addEventListener("click", () => {
       activateTab("analyze");
+      setPredictionMode(entry.mode || "empirical");
       DOM.input.value = entry.inputText;
       runAnalysis(entry.inputText, { persist: false });
     });
@@ -1466,6 +1705,10 @@ function themeForKey(themeKey) {
   return THEME_CONFIG[themeKey] || THEME_CONFIG.neutral;
 }
 
+function predictionModeConfig(mode) {
+  return PREDICTION_MODES[mode] || PREDICTION_MODES.empirical;
+}
+
 function buildThemeVars(color, backgroundAlpha = 0.1) {
   return [
     `--theme-accent:${color}`,
@@ -1494,7 +1737,12 @@ function hexToRgba(hex, alpha) {
 function loadHistory() {
   try {
     const raw = localStorage.getItem(STORAGE_KEY);
-    return raw ? JSON.parse(raw) : [];
+    return raw
+      ? JSON.parse(raw).map((entry) => ({
+          ...entry,
+          mode: entry.mode || "empirical",
+        }))
+      : [];
   } catch (error) {
     return [];
   }
