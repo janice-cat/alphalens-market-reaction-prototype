@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AlphaLens</title>
-    <link rel="stylesheet" href="./styles.css?v=20260429a" />
+    <link rel="stylesheet" href="./styles.css?v=20260429d" />
   </head>
   <body>
     <div class="app-shell">
@@ -250,108 +250,287 @@
           </section>
 
           <section class="tab-panel" id="tab-about">
-            <div class="about-layout">
-              <article class="card about-hero-card">
-                <div class="card-heading">
-                  <div>
-                    <h2>Turning Events Into Market Reaction Paths</h2>
-                    <p class="card-subcopy">
-                      AlphaLens maps global events to cross-sector ETF responses using
-                      data-informed templates and horizon-based scenarios.
-                    </p>
-                  </div>
+            <div class="about-scroll-story">
+              <section class="about-scene about-scene-opening is-active" data-about-scene="opening">
+                <div class="about-scene-sticky">
+                  <article class="card about-scene-card about-opening-card">
+                    <h2 class="about-hero-title about-reveal">
+                      <span class="about-line">Turn news headline into</span>
+                      <span class="about-line">a cross-sector ETF reaction simulation.</span>
+                    </h2>
+                    <div class="about-opening-accent" aria-hidden="true">
+                      <span class="about-opening-orb orb-one"></span>
+                      <span class="about-opening-orb orb-two"></span>
+                      <span class="about-opening-orb orb-three"></span>
+                      <span class="about-opening-orb orb-four"></span>
+                    </div>
+                  </article>
                 </div>
-              </article>
+              </section>
 
-              <div class="about-grid">
-                <article class="card about-step-card">
-                  <h3>1. How It Works</h3>
-                  <div class="process-flow" aria-hidden="true">
-                    <span class="flow-step">Headline</span>
-                    <span class="flow-arrow">→</span>
-                    <span class="flow-step">Classify</span>
-                    <span class="flow-arrow">→</span>
-                    <span class="flow-step">Blend</span>
-                    <span class="flow-arrow">→</span>
-                    <span class="flow-step">Predict</span>
-                    <span class="flow-arrow">→</span>
-                    <span class="flow-step">Explain</span>
-                  </div>
-                  <p>
-                    We classify the event, blend the relevant transmission channels, apply a
-                    calibrated prediction mode, and generate time-evolving ETF responses with
-                    uncertainty.
-                  </p>
-                </article>
+              <section class="about-scene about-scene-flow" data-about-scene="flow">
+                <div class="about-scene-sticky">
+                  <article class="card about-scene-card about-flow-card">
+                    <div class="card-heading about-reveal">
+                      <div>
+                        <p class="about-scene-label">How It Works</p>
+                        <h2>
+                          <span class="about-line">From raw event text to</span>
+                          <span class="about-line">interpretable ETF response scenarios.</span>
+                        </h2>
+                        <p class="card-kicker">
+                          AlphaLens makes the whole chain visible: event understanding, channel
+                          routing, prediction mode, and the resulting ETF path.
+                        </p>
+                      </div>
+                    </div>
 
-                <article class="card about-step-card">
-                  <h3>2. Example Transmission (Lead-Lag)</h3>
-                  <div class="transmission-lanes" aria-hidden="true">
-                    <div class="lane">
-                      <span class="lane-label">SOXX</span>
-                      <span class="lane-bar lane-bar-short"></span>
-                    </div>
-                    <div class="lane">
-                      <span class="lane-label">QQQ</span>
-                      <span class="lane-bar lane-bar-mid"></span>
-                    </div>
-                    <div class="lane">
-                      <span class="lane-label">XLU</span>
-                      <span class="lane-bar lane-bar-late"></span>
-                    </div>
-                    <div class="lane">
-                      <span class="lane-label">XLE</span>
-                      <span class="lane-bar lane-bar-conditional"></span>
-                    </div>
-                  </div>
-                  <p>
-                    Different sectors react at different horizons. Lead-lag mode preserves this
-                    propagation pattern instead of collapsing everything into one average curve.
-                  </p>
-                </article>
+                    <div class="about-flow-diagram" aria-hidden="true">
+                      <div class="about-flow-step step-lilac about-seq-step">
+                        <div class="about-flow-icon">
+                          <svg viewBox="0 0 64 64">
+                            <path d="M17 10h20l10 10v34H17z"></path>
+                            <path d="M37 10v10h10"></path>
+                            <path d="M24 28h16"></path>
+                            <path d="M24 36h16"></path>
+                            <path d="M24 44h12"></path>
+                          </svg>
+                        </div>
+                        <p>Headline /<br />Event</p>
+                      </div>
 
-                <article class="card about-step-card">
-                  <h3>3. Modeling Approaches</h3>
-                  <div class="approach-list">
-                    <div class="approach-item active-approach">
-                      <span class="approach-name">Empirical Templates</span>
-                      <span class="approach-note">Calibrated amplitude, lag, decay, uncertainty</span>
-                    </div>
-                    <div class="approach-item active-approach alt-approach">
-                      <span class="approach-name">Lead-Lag</span>
-                      <span class="approach-note">Blended horizon-response paths by asset</span>
-                    </div>
-                    <div class="approach-item planned-approach">
-                      <span class="approach-name">Measured Windows</span>
-                      <span class="approach-note">Future upgrade from real event-by-event return windows</span>
-                    </div>
-                  </div>
-                </article>
+                      <div class="about-flow-arrow about-seq-step">
+                        <svg viewBox="0 0 72 24">
+                          <circle cx="10" cy="12" r="4"></circle>
+                          <path d="M18 12h28"></path>
+                          <path d="m40 6 14 6-14 6"></path>
+                        </svg>
+                      </div>
 
-                <article class="card about-step-card">
-                  <h3>4. Data and Limitations</h3>
-                  <div class="limitation-list">
-                    <div class="limitation-item">
-                      Seeded event examples support today’s prototype and the supported taxonomy.
-                    </div>
-                    <div class="limitation-item">
-                      Outputs are structured scenarios with uncertainty, not price targets or
-                      investment advice.
-                    </div>
-                    <div class="limitation-item">
-                      The next upgrade is measured event windows tied to timestamped articles and
-                      historical ETF data.
-                    </div>
-                  </div>
-                </article>
-              </div>
+                      <div class="about-flow-step step-magenta about-seq-step">
+                        <div class="about-flow-icon">
+                          <svg viewBox="0 0 64 64">
+                            <path d="M30 12a9 9 0 0 0-15 7 8 8 0 0 0-6 8 9 9 0 0 0 9 9h2"></path>
+                            <path d="M34 12a9 9 0 0 1 15 7 8 8 0 0 1 6 8 9 9 0 0 1-9 9h-2"></path>
+                            <path d="M32 12v32"></path>
+                            <path d="M23 22h5"></path>
+                            <path d="M36 22h5"></path>
+                            <path d="M22 32h8"></path>
+                            <path d="M34 32h8"></path>
+                            <path d="M24 42h4"></path>
+                            <path d="M36 42h4"></path>
+                          </svg>
+                        </div>
+                        <p>Event<br />Classification</p>
+                      </div>
 
-              <article class="card disclaimer-card">
-                <p>
-                  This is a research prototype for educational and exploratory use. Transparency
-                  first, models second, insights always.
-                </p>
-              </article>
+                      <div class="about-flow-arrow about-seq-step">
+                        <svg viewBox="0 0 72 24">
+                          <circle cx="10" cy="12" r="4"></circle>
+                          <path d="M18 12h28"></path>
+                          <path d="m40 6 14 6-14 6"></path>
+                        </svg>
+                      </div>
+
+                      <div class="about-flow-step step-violet about-seq-step">
+                        <div class="about-flow-icon">
+                          <svg viewBox="0 0 64 64">
+                            <path d="M14 16h36L38 30v16l-12-6V30z"></path>
+                          </svg>
+                        </div>
+                        <p>Channel<br />Blend</p>
+                      </div>
+
+                      <div class="about-flow-arrow about-seq-step">
+                        <svg viewBox="0 0 72 24">
+                          <circle cx="10" cy="12" r="4"></circle>
+                          <path d="M18 12h28"></path>
+                          <path d="m40 6 14 6-14 6"></path>
+                        </svg>
+                      </div>
+
+                      <div class="about-flow-step step-cyan about-seq-step">
+                        <div class="about-flow-icon">
+                          <svg viewBox="0 0 64 64">
+                            <path d="M10 38h10l6-16 8 24 7-15h13"></path>
+                          </svg>
+                        </div>
+                        <p>Reaction<br />Model</p>
+                      </div>
+
+                      <div class="about-flow-arrow about-seq-step">
+                        <svg viewBox="0 0 72 24">
+                          <circle cx="10" cy="12" r="4"></circle>
+                          <path d="M18 12h28"></path>
+                          <path d="m40 6 14 6-14 6"></path>
+                        </svg>
+                      </div>
+
+                      <div class="about-flow-step step-mint about-seq-step">
+                        <div class="about-flow-icon">
+                          <svg viewBox="0 0 64 64">
+                            <path d="M15 46V30"></path>
+                            <path d="M28 46V22"></path>
+                            <path d="M41 46V14"></path>
+                            <path d="M10 46h40"></path>
+                          </svg>
+                        </div>
+                        <p>ETF<br />Responses</p>
+                      </div>
+                    </div>
+                  </article>
+                </div>
+              </section>
+
+              <section class="about-scene about-scene-method" data-about-scene="method">
+                <div class="about-scene-sticky">
+                  <article class="card about-scene-card about-method-card">
+                    <div class="card-heading about-reveal">
+                      <div>
+                        <p class="about-scene-label">Method</p>
+                        <h2>
+                          <span class="about-line">Two methods share same event understanding,</span>
+                          <span class="about-line">but answer timing differently.</span>
+                        </h2>
+                      </div>
+                    </div>
+
+                    <div class="about-mode-grid">
+                      <div class="about-mode-card mode-empirical about-reveal">
+                        <div class="about-mode-topline">
+                          <span class="about-mode-pill">Empirical Templates</span>
+                        </div>
+                        <p class="about-mode-copy">
+                          Blends calibrated response templates learned from similar events.
+                        </p>
+                      </div>
+
+                      <div class="about-mode-card mode-leadlag about-reveal">
+                        <div class="about-mode-topline">
+                          <span class="about-mode-pill">Lead-Lag</span>
+                        </div>
+                        <p class="about-mode-copy">
+                          Preserves the order reactions unfold across assets by blending
+                          horizon-level response paths.
+                        </p>
+                      </div>
+                    </div>
+
+                    <p class="about-method-support about-reveal">
+                      Both modes share the same event understanding layer; they differ only in how
+                      the final path is constructed.
+                    </p>
+                  </article>
+                </div>
+              </section>
+
+              <section class="about-scene about-scene-data" data-about-scene="data">
+                <div class="about-scene-sticky">
+                  <article class="card about-scene-card about-data-card">
+                    <div class="card-heading about-reveal">
+                      <div>
+                        <p class="about-scene-label">Data Curation</p>
+                        <h2>
+                          <span class="about-line">One auditable curation system</span>
+                          <span class="about-line">powers training, coverage, and future extension.</span>
+                        </h2>
+                      </div>
+                    </div>
+
+                    <div class="about-data-system" aria-hidden="true">
+                      <div class="about-master-node about-reveal">
+                        <p class="about-data-title">Master Curation Table</p>
+                        <div class="about-master-flow">
+                          <span>Collect</span>
+                          <span class="about-master-arrow">→</span>
+                          <span>Review</span>
+                          <span class="about-master-arrow">→</span>
+                          <span>Promote</span>
+                          <span class="about-master-arrow">→</span>
+                          <span>Learn</span>
+                        </div>
+                        <p class="about-data-copy about-data-copy-inline">
+                          Collected from NewsAPI / GDELT, then reviewed by a human before promotion into training or coverage workflows.
+                        </p>
+                      </div>
+
+                      <div class="about-data-branches">
+                        <div class="about-data-branch about-reveal">
+                          <div class="about-branch-arrow"></div>
+                          <div class="about-branch-card branch-gold">
+                            <h3>Gold</h3>
+                            <p>High-trust reviewed events used to learn empirical and lead-lag response parameters.</p>
+                          </div>
+                        </div>
+
+                        <div class="about-data-branch about-reveal">
+                          <div class="about-branch-arrow"></div>
+                          <div class="about-branch-card branch-silver">
+                            <h3>Silver</h3>
+                            <p>Coverage-oriented events used to improve event classification, vocabulary, and polarity handling.</p>
+                          </div>
+                        </div>
+
+                        <div class="about-data-branch about-reveal">
+                          <div class="about-branch-arrow"></div>
+                          <div class="about-branch-card branch-eval">
+                            <h3>Coverage Eval</h3>
+                            <p>Human-in-the-loop checks for misses, ambiguity, and scope gaps in recent news.</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <ul class="about-honesty-list about-reveal">
+                      <li><strong>Current training</strong> uses a reviewed gold set.</li>
+                      <li><strong>Silver improves coverage</strong> rather than direct response learning.</li>
+                      <li><strong>Outputs are scenario estimates</strong>, not investment advice or price targets.</li>
+                      <li><strong>Measured event-window calibration</strong> is the next major upgrade path.</li>
+                    </ul>
+                  </article>
+                </div>
+              </section>
+
+              <section class="about-scene about-scene-why" data-about-scene="why">
+                <div class="about-scene-sticky">
+                  <article class="card about-scene-card about-why-card">
+                    <div class="card-heading about-reveal">
+                      <div>
+                        <p class="about-scene-label">Why It Matters</p>
+                        <h2>
+                          <span class="about-line">AlphaLens turns market news into</span>
+                          <span class="about-line">a structured, testable reaction map.</span>
+                        </h2>
+                      </div>
+                    </div>
+
+                    <p class="about-why-copy about-reveal">
+                      Instead of leaving market narratives vague, it makes the assumptions explicit:
+                      what the event is, which channels matter, who moves first, and why the move
+                      happens.
+                    </p>
+
+                    <div class="about-pillars-grid">
+                      <div class="about-pillar-card about-reveal">
+                        <span class="about-pillar-title">Grounded</span>
+                        <span class="about-pillar-note">What the event is</span>
+                      </div>
+                      <div class="about-pillar-card about-reveal">
+                        <span class="about-pillar-title">Structured</span>
+                        <span class="about-pillar-note">Which channels matter</span>
+                      </div>
+                      <div class="about-pillar-card about-reveal">
+                        <span class="about-pillar-title">Timing-aware</span>
+                        <span class="about-pillar-note">Who moves first</span>
+                      </div>
+                      <div class="about-pillar-card about-reveal">
+                        <span class="about-pillar-title">Interpretable</span>
+                        <span class="about-pillar-note">Why the move happens</span>
+                      </div>
+                    </div>
+                  </article>
+                </div>
+              </section>
             </div>
           </section>
         </main>
@@ -365,6 +544,6 @@
       </div>
     </div>
 
-    <script src="./app.js?v=20260429a" defer></script>
+    <script src="./app.js?v=20260429d" defer></script>
   </body>
 </html>

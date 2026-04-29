@@ -143,6 +143,7 @@ const DOM = {
   historyList: document.querySelector("#history-list"),
   demoOverlay: document.querySelector("#demo-overlay"),
   demoCursor: document.querySelector("#demo-cursor"),
+  aboutScenes: Array.from(document.querySelectorAll(".about-scene")),
 };
 
 const state = {
@@ -157,6 +158,7 @@ const state = {
   demoRunId: 0,
   demoActive: false,
   demoAutoplayTimer: null,
+  aboutObserver: null,
 };
 
 initialize();
@@ -165,6 +167,7 @@ async function initialize() {
   renderLegend();
   renderHistory();
   bindEvents();
+  initializeAboutScenes();
   updatePredictionModeUI();
   setLoadingState();
 
@@ -452,6 +455,77 @@ function activateTab(tabName) {
 
   DOM.panels.forEach((panel) => {
     panel.classList.toggle("active", panel.id === `tab-${tabName}`);
+  });
+
+  if (tabName === "about") {
+    requestAnimationFrame(refreshAboutSceneState);
+  }
+}
+
+function initializeAboutScenes() {
+  if (!DOM.aboutScenes.length) {
+    return;
+  }
+
+  if (typeof IntersectionObserver === "undefined") {
+    setActiveAboutScene(DOM.aboutScenes[0]);
+    return;
+  }
+
+  state.aboutObserver = new IntersectionObserver(handleAboutSceneIntersections, {
+    threshold: [0.24, 0.4, 0.6],
+    rootMargin: "-8% 0px -8% 0px",
+  });
+
+  DOM.aboutScenes.forEach((scene) => {
+    state.aboutObserver.observe(scene);
+  });
+
+  window.addEventListener("resize", refreshAboutSceneState, { passive: true });
+  refreshAboutSceneState();
+}
+
+function handleAboutSceneIntersections(entries) {
+  const visibleEntries = entries.filter((entry) => entry.isIntersecting);
+
+  if (!visibleEntries.length) {
+    return;
+  }
+
+  visibleEntries.sort((left, right) => right.intersectionRatio - left.intersectionRatio);
+  setActiveAboutScene(visibleEntries[0].target);
+}
+
+function refreshAboutSceneState() {
+  if (!DOM.aboutScenes.length) {
+    return;
+  }
+
+  const viewportAnchor = window.innerHeight * 0.44;
+  let bestScene = DOM.aboutScenes[0];
+  let bestDistance = Number.POSITIVE_INFINITY;
+
+  DOM.aboutScenes.forEach((scene) => {
+    const rect = scene.getBoundingClientRect();
+    if (rect.bottom <= 0 || rect.top >= window.innerHeight) {
+      return;
+    }
+
+    const sceneAnchor = rect.top + Math.min(rect.height, window.innerHeight) * 0.5;
+    const distance = Math.abs(sceneAnchor - viewportAnchor);
+
+    if (distance < bestDistance) {
+      bestDistance = distance;
+      bestScene = scene;
+    }
+  });
+
+  setActiveAboutScene(bestScene);
+}
+
+function setActiveAboutScene(activeScene) {
+  DOM.aboutScenes.forEach((scene) => {
+    scene.classList.toggle("is-active", scene === activeScene);
   });
 }
 
