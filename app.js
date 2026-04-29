@@ -10,18 +10,16 @@ const PREDICTION_MODES = {
   empirical: {
     label: "Empirical Template",
     shortLabel: "Empirical",
-    chartSubtitle: "Blended template path over the next 0-3 trading days",
-    timingKicker: "Average template timing by asset",
-    toggleNote: "Compare the baseline template against horizon-based propagation",
+    timingKicker: "Relative order and rationale by asset (left = leads, right = lags)",
+    toggleNote: "Blends calibrated responses from similar events.",
     methodCopy:
       "Empirical mode blends average amplitude, lag, and decay templates before drawing the scenario path.",
   },
   leadlag: {
     label: "Lead-Lag",
     shortLabel: "Lead-Lag",
-    chartSubtitle: "Blended horizon-response path over the next 0-3 trading days",
-    timingKicker: "Peak timing from blended horizon paths",
-    toggleNote: "Compare the baseline template against horizon-based propagation",
+    timingKicker: "Relative order and rationale by asset (left = leads, right = lags)",
+    toggleNote: "Preserves the order reactions unfold across assets.",
     methodCopy:
       "Lead-Lag mode blends averaged horizon response paths directly, preserving who tends to move first and who follows later.",
   },
@@ -86,6 +84,22 @@ const THEME_CONFIG = {
 };
 
 const SAMPLE_THEME_ORDER = ["semiconductor", "ai", "power", "energy"];
+const SAMPLE_DISPLAY_OVERRIDES = {
+  "AI data center demand surges after hyperscaler capex guidance":
+    "AI data center demand surges after hyperscaler guidance",
+  "AI demand surges but grid bottlenecks delay new data center capacity":
+    "AI demand surges but grid bottlenecks delay new data centers",
+  "New semiconductor tariffs announced on advanced chip imports from China":
+    "New semiconductor tariffs announced on advanced chip imports",
+  "Semiconductor tariff relief and federal permitting support AI infrastructure buildout":
+    "Tariff relief and federal permitting support AI infrastructure",
+  "Power grid bottleneck delays new data center capacity in Northern Virginia":
+    "Power grid bottleneck delays new data center capacity",
+  "Middle East oil supply disruption raises energy security concerns":
+    "Middle East oil disruption raises energy security concerns",
+  "Federal permitting for AI infrastructure accelerates across multiple agencies":
+    "Federal permitting for AI infrastructure accelerates",
+};
 
 const DOM = {
   tabs: document.querySelectorAll(".tab-button"),
@@ -94,8 +108,12 @@ const DOM = {
   inputCard: document.querySelector(".input-card"),
   analyzeButton: document.querySelector("#analyze-button"),
   clearButton: document.querySelector("#clear-button"),
-  predictionModeButtons: document.querySelectorAll("[data-prediction-mode]"),
+  playDemoButton: document.querySelector("#play-demo-button"),
+  predictionSwitch: document.querySelector("#prediction-switch"),
+  empiricalLabel: document.querySelector("#empirical-label"),
+  leadLagLabel: document.querySelector("#leadlag-label"),
   sampleChips: document.querySelector("#sample-chips"),
+  classificationCard: document.querySelector(".classification-card"),
   classificationBadge: document.querySelector("#classification-badge"),
   confidencePill: document.querySelector("#confidence-pill"),
   confidenceFill: document.querySelector("#confidence-fill"),
@@ -107,13 +125,13 @@ const DOM = {
   chart: document.querySelector("#reaction-chart"),
   chartCard: document.querySelector(".chart-card"),
   chartLegend: document.querySelector("#chart-legend"),
-  chartSubtitle: document.querySelector("#chart-subtitle"),
-  chartModeBadge: document.querySelector("#chart-mode-badge"),
   predictionModeNote: document.querySelector("#prediction-mode-note"),
+  moveStorySection: document.querySelector(".move-story-section"),
   timingList: document.querySelector("#timing-list"),
   timingKicker: document.querySelector("#timing-kicker"),
   marketReadText: document.querySelector("#market-read-text"),
   confidenceText: document.querySelector("#confidence-text"),
+  analogCard: document.querySelector(".analog-card"),
   historyList: document.querySelector("#history-list"),
 };
 
@@ -125,6 +143,7 @@ const state = {
   calibrationStats: {},
   predictionMode: "empirical",
   history: loadHistory(),
+  demoTimers: [],
 };
 
 initialize();
@@ -181,31 +200,41 @@ async function loadDataset() {
 
 function bindEvents() {
   DOM.tabs.forEach((button) => {
-    button.addEventListener("click", () => activateTab(button.dataset.tab));
+    button.addEventListener("click", () => {
+      clearDemoSequence();
+      activateTab(button.dataset.tab);
+    });
   });
 
   DOM.analyzeButton.addEventListener("click", () => {
+    clearDemoSequence();
     runAnalysis(DOM.input.value, { persist: true });
   });
 
   DOM.clearButton.addEventListener("click", () => {
+    clearDemoSequence();
     DOM.input.value = "";
     DOM.input.focus();
   });
 
-  DOM.predictionModeButtons.forEach((button) => {
-    button.addEventListener("click", () => {
-      setPredictionMode(button.dataset.predictionMode, { rerun: true });
+  if (DOM.playDemoButton) {
+    DOM.playDemoButton.addEventListener("click", playDemo);
+  }
+
+  if (DOM.predictionSwitch) {
+    DOM.predictionSwitch.addEventListener("click", () => {
+      clearDemoSequence();
+      const nextMode = state.predictionMode === "empirical" ? "leadlag" : "empirical";
+      setPredictionMode(nextMode, { rerun: true });
     });
-  });
+  }
 
   DOM.input.addEventListener("keydown", (event) => {
     if ((event.metaKey || event.ctrlKey) && event.key === "Enter") {
+      event.preventDefault();
       runAnalysis(DOM.input.value, { persist: true });
     }
   });
-
-  window.addEventListener("resize", scheduleTopPanelSync);
 }
 
 function setPredictionMode(mode, options = { rerun: false }) {
@@ -224,18 +253,18 @@ function setPredictionMode(mode, options = { rerun: false }) {
 function updatePredictionModeUI() {
   const modeConfig = predictionModeConfig(state.predictionMode);
 
-  DOM.predictionModeButtons.forEach((button) => {
-    const isActive = button.dataset.predictionMode === state.predictionMode;
-    button.classList.toggle("active", isActive);
-    button.setAttribute("aria-pressed", isActive ? "true" : "false");
-  });
-
-  if (DOM.chartSubtitle) {
-    DOM.chartSubtitle.textContent = modeConfig.chartSubtitle;
+  if (DOM.predictionSwitch) {
+    const isLeadLag = state.predictionMode === "leadlag";
+    DOM.predictionSwitch.classList.toggle("leadlag", isLeadLag);
+    DOM.predictionSwitch.setAttribute("aria-checked", isLeadLag ? "true" : "false");
   }
 
-  if (DOM.chartModeBadge) {
-    DOM.chartModeBadge.textContent = modeConfig.label;
+  if (DOM.empiricalLabel) {
+    DOM.empiricalLabel.classList.toggle("active", state.predictionMode === "empirical");
+  }
+
+  if (DOM.leadLagLabel) {
+    DOM.leadLagLabel.classList.toggle("active", state.predictionMode === "leadlag");
   }
 
   if (DOM.predictionModeNote) {
@@ -262,7 +291,7 @@ function setLoadingState() {
   DOM.analogList.innerHTML =
     '<p class="empty-state">Loading historical analogs from the seed dataset.</p>';
   DOM.timingList.innerHTML =
-    '<p class="empty-state">Loading calibrated response templates.</p>';
+    '<p class="empty-state">Loading ETF reaction stories from the calibrated response templates.</p>';
   DOM.marketReadText.textContent =
     "Loading event taxonomy, templates, and seed data.";
   DOM.confidenceText.textContent =
@@ -279,7 +308,7 @@ function setDatasetErrorState(error) {
   DOM.analogList.innerHTML =
     '<p class="empty-state">Dataset loading failed. Check the local server and data files.</p>';
   DOM.timingList.innerHTML =
-    '<p class="empty-state">Timing panel unavailable until the dataset loads.</p>';
+    '<p class="empty-state">ETF reaction stories are unavailable until the dataset loads.</p>';
   DOM.marketReadText.textContent =
     "The prototype could not load its local data files. Once the dataset is available, event classification and reaction curves will resume.";
   DOM.confidenceText.textContent =
@@ -300,53 +329,23 @@ function renderSampleChips() {
   DOM.analyzeButton.disabled = false;
   DOM.sampleChips.innerHTML = "";
 
-  const groupedSamples = Object.fromEntries(
-    SAMPLE_THEME_ORDER.map((themeKey) => [themeKey, []]),
-  );
-
   state.catalog.sampleEvents.forEach((sample) => {
     const classification = classifyEvent(sample);
-    const themeKey = themeKeyForEventType(classification.event_type);
-    groupedSamples[themeKey] = groupedSamples[themeKey] || [];
-    groupedSamples[themeKey].push({
-      text: sample,
-      label: classification.label,
-      themeKey,
-    });
-  });
-
-  SAMPLE_THEME_ORDER.forEach((themeKey) => {
-    const samples = groupedSamples[themeKey] || [];
-    if (!samples.length) {
-      return;
-    }
-
-    const theme = themeForKey(themeKey);
-    const cluster = document.createElement("section");
-    cluster.className = "sample-cluster";
-    cluster.innerHTML = `
-      <div class="sample-cluster-heading">
-        <div class="sample-cluster-title">${theme.title}</div>
-      </div>
+    const theme = themeForKey(themeKeyForEventType(classification.event_type));
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "sample-chip";
+    button.setAttribute("style", buildThemeVars(theme.color, 0.12));
+    button.innerHTML = `
+      <span class="sample-chip-meta">${classification.label}</span>
+      <span class="sample-chip-copy">${sampleDisplayText(sample)}</span>
     `;
-
-    samples.forEach((sample) => {
-      const button = document.createElement("button");
-      button.type = "button";
-      button.className = "sample-card";
-      button.setAttribute("style", buildThemeVars(theme.color, 0.12));
-      button.innerHTML = `
-        <span class="sample-card-meta">${sample.label}</span>
-        <span class="sample-card-title">${sample.text}</span>
-      `;
-      button.addEventListener("click", () => {
-        DOM.input.value = sample.text;
-        runAnalysis(sample.text, { persist: true });
-      });
-      cluster.appendChild(button);
+    button.addEventListener("click", () => {
+      clearDemoSequence();
+      DOM.input.value = sample;
+      runAnalysis(sample, { persist: true });
     });
-
-    DOM.sampleChips.appendChild(cluster);
+    DOM.sampleChips.appendChild(button);
   });
 }
 
@@ -701,7 +700,6 @@ function runAnalysis(inputText, options = { persist: true }) {
   renderChart(scenario);
   renderTiming(classification, scenario);
   renderExplanation(classification, scenario);
-  scheduleTopPanelSync();
 
   if (options.persist) {
     pushHistory(cleanInput, classification, scenario);
@@ -1216,8 +1214,8 @@ function smoothstep(edge0, edge1, x) {
 
 function renderChart(scenario) {
   const width = 960;
-  const height = 380;
-  const padding = { top: 22, right: 36, bottom: 36, left: 64 };
+  const height = 460;
+  const padding = { top: 24, right: 40, bottom: 42, left: 64 };
   const innerWidth = width - padding.left - padding.right;
   const innerHeight = height - padding.top - padding.bottom;
 
@@ -1319,7 +1317,7 @@ function renderTiming(classification, scenario) {
       const lag = template.lag_days ?? 0;
       return {
         assetName,
-        timingLabel: toTimingLabel(lag),
+        timingLabel: "",
         lag,
         interpretation: isBlended
           ? blendedInterpretationForAsset(classification.components, assetName)
@@ -1333,25 +1331,20 @@ function renderTiming(classification, scenario) {
     })
     .sort((left, right) => left.lag - right.lag);
 
-  entries.forEach((entry) => {
+  entries.forEach((entry, index) => {
+    entry.timingLabel = timingLabelForRank(index, entries.length);
     const item = document.createElement("div");
-    item.className = "timing-item themed-card";
+    item.className = "move-story-item themed-card";
     item.setAttribute("style", buildThemeVars(ASSETS[entry.assetName].color, 0.12));
     item.innerHTML = `
-      <div class="timing-copy">
-        <div class="timing-meta">${entry.assetName} · ${ASSETS[entry.assetName].label}</div>
-        <div class="timing-title">${entry.interpretation}</div>
-        <div class="history-summary">${
-          usesLeadLag ? "Peak horizon response" : "Peak modeled response"
-        } ${formatSigned(entry.amplitude)} z ${
-      entry.lag === null
-        ? "with conditional timing."
-        : usesLeadLag
-          ? `around Day ${entry.lag.toFixed(1)}.`
-          : `with lag ${entry.lag.toFixed(1)}d.`
-    }</div>
+      <div class="story-asset-row">
+        <div class="story-asset-name">
+          <span>${entry.assetName}</span>
+          <span class="story-direction">${directionArrow(entry.amplitude)}</span>
+        </div>
+        <span class="story-time-pill">${entry.timingLabel}</span>
       </div>
-      <div class="timing-badge">${entry.timingLabel}</div>
+      <p class="story-body">${entry.interpretation}</p>
     `;
     DOM.timingList.appendChild(item);
   });
@@ -1387,7 +1380,7 @@ function renderExplanation(classification, scenario) {
         .join(" with ")}.`
     : ` This read is driven mainly by ${classification.label.toLowerCase()}.`;
 
-  DOM.marketReadText.textContent = `${config.explanation}${blendSummary} ${modeConfig.methodCopy} The strongest modeled move over the first three trading days is in ${strongestAsset}.`;
+  DOM.marketReadText.textContent = `${config.explanation}${blendSummary} ${modeConfig.methodCopy} The strongest modeled move in this scenario is ${strongestAsset}.`;
   DOM.confidenceText.textContent = `${modeConfig.label} is active. Current confidence is ${Math.round(
     classification.confidence * 100,
   )}%. ${confidenceTone} The reaction paths are learned from ${eventCount} seeded analogs in the local dataset, so treat them as structured directional sketches rather than precise forecasts.`;
@@ -1400,8 +1393,10 @@ function updateClassificationUI(classification) {
     classification.confidence * 100,
   )}%`;
   DOM.confidenceFill.style.width = `${Math.round(classification.confidence * 100)}%`;
-  DOM.classificationTheme.textContent = classification.theme;
-  DOM.classificationChannels.textContent = classification.channels.join(" · ");
+  DOM.classificationTheme.textContent = humanizeDisplayText(classification.theme);
+  DOM.classificationChannels.textContent = classification.channels
+    .map((channel) => humanizeDisplayText(channel))
+    .join(" · ");
   DOM.classificationRationale.textContent = classification.rationale;
   renderBlendMix(classification);
 }
@@ -1484,7 +1479,9 @@ function renderAnalogs(classification) {
 
 function formatAnalogNote(event) {
   if (!event.calibration) {
-    return `Theme: ${event.theme}. Source: ${event.source_hint}. Status: ${event.validation_status}.`;
+    return `Theme: ${humanizeDisplayText(event.theme)}. Source: ${event.source_hint}. Status: ${humanizeDisplayText(
+      event.validation_status,
+    )}.`;
   }
 
   const topMoves = Object.entries(event.calibration)
@@ -1493,7 +1490,9 @@ function formatAnalogNote(event) {
     .map(([assetName, observation]) => `${assetName} ${formatSigned(observation.amplitude_z)}`)
     .join(" · ");
 
-  return `Type: ${state.catalog.eventTypes[event.event_type]?.label ?? event.event_type}. Theme: ${event.theme}. Seeded observed peaks: ${topMoves}. Source: ${event.source_hint}.`;
+  return `Type: ${state.catalog.eventTypes[event.event_type]?.label ?? event.event_type}. Theme: ${humanizeDisplayText(
+    event.theme,
+  )}. Seeded observed peaks: ${topMoves}. Source: ${event.source_hint}.`;
 }
 
 function buildAnalogTitleMarkup(event) {
@@ -1561,24 +1560,24 @@ function blendedInterpretationForAsset(components, assetName) {
   return assetCopy[assetName];
 }
 
-function toTimingLabel(lagDays) {
-  if (lagDays === null || lagDays === undefined) {
-    return "Conditional";
+function timingLabelForRank(index, total) {
+  if (total <= 1) {
+    return "Lead";
   }
 
-  if (lagDays <= 0.5) {
-    return "Immediate";
+  if (index === 0) {
+    return "Lead";
   }
 
-  if (lagDays <= 1.0) {
-    return "Short Lag";
+  if (index === 1) {
+    return "Follow";
   }
 
-  if (lagDays <= 2.0) {
-    return "Lagged";
+  if (index === total - 2) {
+    return "Lag";
   }
 
-  return "Conditional";
+  return "Late";
 }
 
 function pushHistory(inputText, classification, scenario) {
@@ -1674,27 +1673,65 @@ function formatDateTime(isoString) {
   });
 }
 
-function scheduleTopPanelSync() {
-  window.requestAnimationFrame(() => {
-    syncTopPanelHeights();
+function playDemo() {
+  if (!state.catalog?.sampleEvents?.length) {
+    return;
+  }
+
+  clearDemoSequence();
+  activateTab("analyze");
+
+  const sample = state.catalog.sampleEvents[0];
+  DOM.input.value = sample;
+  runAnalysis(sample, { persist: false });
+
+  if (DOM.playDemoButton) {
+    DOM.playDemoButton.classList.add("is-running");
+    DOM.playDemoButton.setAttribute("aria-pressed", "true");
+  }
+
+  const steps = [
+    DOM.inputCard,
+    DOM.classificationCard,
+    DOM.chartCard,
+    DOM.moveStorySection,
+    DOM.analogCard,
+  ].filter(Boolean);
+
+  steps.forEach((element, index) => {
+    const timer = window.setTimeout(() => {
+      element.classList.add("demo-spotlight");
+      window.setTimeout(() => {
+        element.classList.remove("demo-spotlight");
+      }, 760);
+    }, index * 420);
+
+    state.demoTimers.push(timer);
   });
+
+  const finalTimer = window.setTimeout(() => {
+    if (DOM.playDemoButton) {
+      DOM.playDemoButton.classList.remove("is-running");
+      DOM.playDemoButton.setAttribute("aria-pressed", "false");
+    }
+  }, steps.length * 420 + 900);
+
+  state.demoTimers.push(finalTimer);
 }
 
-function syncTopPanelHeights() {
-  if (!DOM.inputCard || !DOM.chartCard) {
-    return;
-  }
+function clearDemoSequence() {
+  state.demoTimers.forEach((timer) => window.clearTimeout(timer));
+  state.demoTimers = [];
 
-  if (window.innerWidth <= 1120) {
-    DOM.inputCard.style.height = "";
-    return;
-  }
-
-  DOM.inputCard.style.height = "";
-  const chartHeight = Math.ceil(DOM.chartCard.getBoundingClientRect().height);
-  if (chartHeight > 0) {
-    DOM.inputCard.style.height = `${chartHeight}px`;
-  }
+  [
+    DOM.inputCard,
+    DOM.classificationCard,
+    DOM.chartCard,
+    DOM.moveStorySection,
+    DOM.analogCard,
+  ]
+    .filter(Boolean)
+    .forEach((element) => element.classList.remove("demo-spotlight"));
 }
 
 function themeKeyForEventType(eventType) {
@@ -1703,6 +1740,14 @@ function themeKeyForEventType(eventType) {
 
 function themeForKey(themeKey) {
   return THEME_CONFIG[themeKey] || THEME_CONFIG.neutral;
+}
+
+function sampleDisplayText(sample) {
+  return SAMPLE_DISPLAY_OVERRIDES[sample] || sample;
+}
+
+function humanizeDisplayText(value) {
+  return String(value || "").replaceAll("_", " ");
 }
 
 function predictionModeConfig(mode) {

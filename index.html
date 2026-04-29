@@ -4,275 +4,339 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AlphaLens</title>
-    <link rel="stylesheet" href="./styles.css?v=20260428" />
+    <link rel="stylesheet" href="./styles.css?v=20260428d" />
   </head>
   <body>
-    <div class="page-shell">
-      <header class="hero">
-        <div>
-          <p class="eyebrow">Codex Challenge Prototype</p>
-          <h1>AlphaLens</h1>
-          <p class="hero-copy">
-            Paste a headline to simulate how SOXX, QQQ, XLU, and XLE may react
-            over the next 0-3 trading days.
-          </p>
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="brand-card">
+          <img class="brand-mark" src="./assets/logo.jpg" alt="" />
+          <div class="brand-copy">
+            <p class="brand-name">AlphaLens</p>
+            <p class="brand-tag">Market Reaction Simulator</p>
+          </div>
         </div>
-      </header>
 
-      <nav class="tab-bar" aria-label="AlphaLens sections">
-        <button class="tab-button active" data-tab="analyze">Analyze Event</button>
-        <button class="tab-button" data-tab="history">History</button>
-        <button class="tab-button" data-tab="about">About</button>
-      </nav>
+        <nav class="sidebar-nav" aria-label="AlphaLens sections">
+          <button class="tab-button active" data-tab="analyze">
+            <span class="nav-icon" aria-hidden="true">A</span>
+            <span>Analyze Event</span>
+          </button>
+          <button class="tab-button" data-tab="history">
+            <span class="nav-icon" aria-hidden="true">H</span>
+            <span>History</span>
+          </button>
+          <button class="tab-button" data-tab="about">
+            <span class="nav-icon" aria-hidden="true">I</span>
+            <span>About</span>
+          </button>
+        </nav>
 
-      <main>
-        <section class="tab-panel active" id="tab-analyze">
-          <div class="analyze-grid">
-            <aside class="stack-col">
+        <div class="sidebar-footer">
+          <div class="sidebar-footer-row">
+            <span class="status-dot" aria-hidden="true"></span>
+            <span>Prototype v0.3.0</span>
+          </div>
+          <p class="sidebar-disclaimer">Research prototype only. Not financial advice.</p>
+        </div>
+      </aside>
+
+      <div class="workspace">
+        <main class="workspace-main">
+          <section class="tab-panel active" id="tab-analyze">
+            <div class="analyze-layout">
               <article class="card input-card">
                 <div class="card-heading">
-                  <h2>Event Input</h2>
-                  <span class="card-kicker">Type or tap a sample</span>
-                </div>
-
-                <label class="sr-only" for="event-input">Event headline or description</label>
-                <textarea
-                  id="event-input"
-                  rows="5"
-                  placeholder="New tariffs on semiconductor imports from China"
-                ></textarea>
-
-                <div class="action-row">
-                  <button id="analyze-button" class="primary-button">Analyze Event</button>
-                  <button id="clear-button" class="secondary-button">Clear</button>
-                </div>
-
-                <div class="prediction-mode-panel">
-                  <div class="prediction-mode-heading">
-                    <span class="prediction-mode-title">Prediction Mode</span>
-                    <span id="prediction-mode-note" class="prediction-mode-note"
-                      >Compare the baseline template against horizon-based propagation</span
-                    >
+                  <div>
+                    <h2>Analyze event</h2>
+                    <p class="card-subcopy">
+                      Paste one headline and turn it into a structured cross-sector ETF
+                      reaction path.
+                    </p>
                   </div>
-                  <div class="prediction-mode-toggle" aria-label="Prediction mode selector">
-                    <button
-                      type="button"
-                      class="mode-button active"
-                      data-prediction-mode="empirical"
-                      aria-pressed="true"
-                    >
-                      Empirical
-                    </button>
-                    <button
-                      type="button"
-                      class="mode-button"
-                      data-prediction-mode="leadlag"
-                      aria-pressed="false"
-                    >
-                      Lead-Lag
+                </div>
+
+                <div class="control-row">
+                  <div class="prompt-block">
+                    <div class="prompt-row">
+                      <label class="sr-only" for="event-input">Event headline or description</label>
+                      <textarea
+                        id="event-input"
+                        rows="3"
+                        placeholder="e.g., New tariffs on semiconductor imports from China"
+                      ></textarea>
+
+                      <button id="analyze-button" class="primary-button">Analyze</button>
+                      <button id="clear-button" class="secondary-button">Clear</button>
+                    </div>
+                  </div>
+
+                  <div class="utility-row">
+                    <aside class="prediction-mode-panel">
+                      <p class="prediction-mode-title">Prediction mode</p>
+                      <div class="prediction-switch-row">
+                        <span id="empirical-label" class="switch-label active">Empirical</span>
+                        <button
+                          id="prediction-switch"
+                          class="prediction-switch"
+                          type="button"
+                          role="switch"
+                          aria-checked="false"
+                          aria-label="Toggle prediction mode"
+                        >
+                          <span class="prediction-switch-thumb"></span>
+                        </button>
+                        <span id="leadlag-label" class="switch-label">Lead-Lag</span>
+                      </div>
+                      <p id="prediction-mode-note" class="prediction-mode-note">
+                        Blends calibrated responses from similar events.
+                      </p>
+                    </aside>
+
+                    <button id="play-demo-button" class="demo-button" type="button" aria-pressed="false">
+                      <span class="demo-icon" aria-hidden="true">&gt;</span>
+                      <span>Play demo</span>
                     </button>
                   </div>
                 </div>
 
                 <div class="sample-group">
-                  <p class="sample-label">Sample headlines</p>
-                  <div id="sample-chips" class="sample-scroll"></div>
+                  <p class="sample-label">Sample events</p>
+                  <div id="sample-chips" class="sample-chip-list"></div>
                 </div>
               </article>
 
-              <article class="card classification-card">
-                <div class="card-heading">
-                  <h2>Classification</h2>
-                  <span class="card-kicker">Event understanding layer</span>
-                </div>
-
-                <div class="classification-topline">
-                  <span id="classification-badge" class="event-badge neutral">Waiting for input</span>
-                  <span id="confidence-pill" class="confidence-pill">Confidence --</span>
-                </div>
-
-                <div class="confidence-meter">
-                  <div id="confidence-fill" class="confidence-fill"></div>
-                </div>
-
-                <div class="blend-panel">
-                  <div class="blend-heading">
-                    <span>Blend Mix</span>
-                    <span class="blend-kicker">Weighted template exposure</span>
-                  </div>
-                  <div id="blend-list" class="blend-list"></div>
-                </div>
-
-                <dl class="meta-list">
-                  <div>
-                    <dt>Theme</dt>
-                    <dd id="classification-theme">--</dd>
-                  </div>
-                  <div>
-                    <dt>Channels</dt>
-                    <dd id="classification-channels">--</dd>
-                  </div>
-                  <div>
-                    <dt>Rationale</dt>
-                    <dd id="classification-rationale">Paste an event to classify it.</dd>
-                  </div>
-                </dl>
-              </article>
-
-              <article class="card analog-card">
-                <div class="card-heading">
-                  <h2>Historical Analogs</h2>
-                  <span class="card-kicker">Seed dataset examples</span>
-                </div>
-                <div id="analog-list" class="analog-list"></div>
-              </article>
-            </aside>
-
-            <div class="main-stage">
-              <article class="card chart-card">
-                <div class="card-heading chart-heading">
-                  <div class="chart-heading-copy">
-                    <h2>Reaction Trajectory</h2>
-                    <div class="chart-heading-meta">
-                      <p id="chart-subtitle" class="subtle-copy">
-                      0-3 day reaction paths with uncertainty bands
-                      </p>
-                      <span id="chart-mode-badge" class="mode-badge">Empirical Template</span>
+              <div class="results-grid">
+                <article class="card classification-card">
+                  <div class="card-heading">
+                    <div>
+                      <h2>Event Understanding</h2>
+                      <p class="card-kicker">Classification and channel blend</p>
                     </div>
                   </div>
-                  <div class="legend" id="chart-legend"></div>
-                </div>
+                  <div class="classification-scroll">
+                    <div class="classification-topline">
+                      <span id="classification-badge" class="event-badge neutral">Waiting for input</span>
+                      <span id="confidence-pill" class="confidence-pill">Confidence --</span>
+                    </div>
 
-                <div class="chart-frame">
-                  <svg id="reaction-chart" viewBox="0 0 960 420" role="img" aria-label="AlphaLens reaction chart"></svg>
-                </div>
-              </article>
+                    <div class="confidence-meter">
+                      <div id="confidence-fill" class="confidence-fill"></div>
+                    </div>
 
-              <div class="support-grid">
-                <article class="card timing-card">
-                  <div class="card-heading">
-                    <h2>Timing / Lead-Lag</h2>
-                    <span id="timing-kicker" class="card-kicker">Who moves first</span>
+                    <div class="blend-panel">
+                      <div class="blend-heading">
+                        <span>Blend Mix</span>
+                        <span class="blend-kicker">Weighted event exposures</span>
+                      </div>
+                      <div id="blend-list" class="blend-list"></div>
+                    </div>
+
+                    <dl class="meta-list">
+                      <div>
+                        <dt>Theme</dt>
+                        <dd id="classification-theme">--</dd>
+                      </div>
+                      <div>
+                        <dt>Channels</dt>
+                        <dd id="classification-channels">--</dd>
+                      </div>
+                      <div>
+                        <dt>Why Classified This Way</dt>
+                        <dd id="classification-rationale">Paste an event to classify it.</dd>
+                      </div>
+                    </dl>
                   </div>
-                  <div id="timing-list" class="timing-list"></div>
                 </article>
 
+                <article class="card chart-card">
+                  <div class="card-heading chart-heading">
+                    <div class="chart-heading-copy">
+                      <h2>Reaction Trajectory <span class="chart-title-detail">(0-3 trading days)</span></h2>
+                    </div>
+                    <div class="legend" id="chart-legend"></div>
+                  </div>
+
+                  <div class="chart-frame">
+                    <svg
+                      id="reaction-chart"
+                      viewBox="0 0 960 460"
+                      role="img"
+                      aria-label="AlphaLens reaction chart"
+                    ></svg>
+                  </div>
+                </article>
+              </div>
+
+              <article class="card move-story-section">
+                <div class="card-heading">
+                  <div>
+                    <h2>Why Each ETF Moved</h2>
+                    <p id="timing-kicker" class="card-kicker">
+                      Relative order and rationale by asset (left = leads, right = lags)
+                    </p>
+                  </div>
+                </div>
+                <div class="story-guide" aria-hidden="true">
+                  <span class="story-guide-label story-guide-lead">Lead</span>
+                  <span class="story-guide-line"></span>
+                  <span class="story-guide-label story-guide-lag">Lag</span>
+                </div>
+                <div id="timing-list" class="move-story-grid"></div>
+              </article>
+
+              <div class="insight-grid">
                 <article class="card explanation-card">
                   <div class="card-heading">
-                    <h2>Explanation</h2>
-                    <span class="card-kicker">Structured narrative</span>
+                    <div>
+                      <h2>Market Read</h2>
+                    </div>
                   </div>
-                  <div class="explanation-stack">
-                    <section class="explanation-section">
-                      <p class="explanation-label">Market Read</p>
-                      <p id="market-read-text" class="explanation-text">
-                        Run an event to generate an asset-trend summary.
-                      </p>
-                    </section>
-                    <section class="explanation-section">
-                      <p class="explanation-label">Confidence and Caveats</p>
-                      <p id="confidence-text" class="uncertainty-note">
-                        Confidence details will appear here.
-                      </p>
-                    </section>
+                  <div class="insight-scroll">
+                    <p id="market-read-text" class="explanation-text">
+                      Run an event to generate an asset-trend summary.
+                    </p>
+                    <p id="confidence-text" class="uncertainty-note">
+                      Confidence details will appear here.
+                    </p>
+                  </div>
+                </article>
+
+                <article class="card analog-card">
+                  <div class="card-heading">
+                    <div>
+                      <h2>Closest Historical Analogs</h2>
+                    </div>
+                  </div>
+                  <div class="insight-scroll">
+                    <div id="analog-list" class="analog-list"></div>
                   </div>
                 </article>
               </div>
             </div>
-          </div>
-        </section>
+          </section>
 
-        <section class="tab-panel" id="tab-history">
-          <article class="card history-card">
-            <div class="card-heading">
-              <h2>Analysis History</h2>
-              <span class="card-kicker">Local browser session memory</span>
-            </div>
-            <div id="history-list" class="history-list"></div>
-          </article>
-        </section>
-
-        <section class="tab-panel" id="tab-about">
-          <article class="card about-card">
-            <div class="card-heading">
-              <h2>About AlphaLens</h2>
-              <span class="card-kicker">Prototype framing</span>
-            </div>
-
-            <div class="about-copy">
-              <p>
-                AlphaLens is an experimental market-reaction simulator. It does
-                not try to predict exact prices. Instead, it classifies global
-                events into economic transmission channels and generates
-                plausible reaction paths across semiconductors, broad tech,
-                utilities, and energy.
-              </p>
-              <p>
-                The current prototype uses local seed data, rule-based event
-                classification, structured reaction patterns, and lightweight
-                explanation logic. The intended production version would replace
-                the rule-based layer with stronger model-based classification and
-                calibrate templates on a larger verified event set.
-              </p>
-              <div class="provenance-panel">
-                <h3>How the Seed Dataset Works</h3>
-                <p>
-                  AlphaLens currently learns from a small hand-built seed
-                  dataset. Each entry is meant to be a useful reference case,
-                  not a claim that the market moved in exactly that way.
-                </p>
-                <div class="dataset-rows" role="list">
-                  <div class="dataset-row" role="listitem">
-                    <div class="dataset-label">Headline entry</div>
-                    <div class="dataset-copy">
-                      A short event example that captures the market setup AlphaLens
-                      is trying to learn from.
-                    </div>
-                  </div>
-                  <div class="dataset-row" role="listitem">
-                    <div class="dataset-label">Source trail</div>
-                    <div class="dataset-copy">
-                      A path back to where the event idea came from. Right now,
-                      many of those links are reference searches rather than one
-                      fully article-verified source.
-                    </div>
-                  </div>
-                  <div class="dataset-row" role="listitem">
-                    <div class="dataset-label">Confidence tag</div>
-                    <div class="dataset-copy">
-                      A plain-language marker showing how verified that entry is
-                      today, so the prototype does not overstate data confidence.
-                    </div>
-                  </div>
-                  <div class="dataset-row" role="listitem">
-                    <div class="dataset-label">Reaction sketch</div>
-                    <div class="dataset-copy">
-                      An approximate picture of which assets move most, how
-                      quickly they react, and how long the move tends to last.
-                    </div>
-                  </div>
+          <section class="tab-panel" id="tab-history">
+            <article class="card history-card">
+              <div class="card-heading">
+                <div>
+                  <h2>Analysis History</h2>
+                  <p class="card-kicker">Local browser session memory</p>
                 </div>
               </div>
-              <p>
-                Some headlines touch more than one market driver at once. When
-                that happens, AlphaLens blends those signals instead of forcing
-                every event into a single bucket.
-              </p>
-              <p>
-                The next dataset upgrade is to replace these hand-seeded
-                reaction sketches with measured market windows tied to
-                timestamped articles and historical ETF data.
-              </p>
-              <p class="disclaimer">
-                This is a research prototype and not financial advice. Outputs
-                are simulated scenarios, not trading recommendations.
-              </p>
+              <div id="history-list" class="history-list"></div>
+            </article>
+          </section>
+
+          <section class="tab-panel" id="tab-about">
+            <div class="about-layout">
+              <article class="card about-hero-card">
+                <div class="card-heading">
+                  <div>
+                    <h2>Turning Events Into Market Reaction Paths</h2>
+                    <p class="card-subcopy">
+                      AlphaLens maps global events to cross-sector ETF responses using
+                      data-informed templates and horizon-based scenarios.
+                    </p>
+                  </div>
+                </div>
+              </article>
+
+              <div class="about-grid">
+                <article class="card about-step-card">
+                  <h3>1. How It Works</h3>
+                  <div class="process-flow" aria-hidden="true">
+                    <span class="flow-step">Headline</span>
+                    <span class="flow-arrow">→</span>
+                    <span class="flow-step">Classify</span>
+                    <span class="flow-arrow">→</span>
+                    <span class="flow-step">Blend</span>
+                    <span class="flow-arrow">→</span>
+                    <span class="flow-step">Predict</span>
+                    <span class="flow-arrow">→</span>
+                    <span class="flow-step">Explain</span>
+                  </div>
+                  <p>
+                    We classify the event, blend the relevant transmission channels, apply a
+                    calibrated prediction mode, and generate time-evolving ETF responses with
+                    uncertainty.
+                  </p>
+                </article>
+
+                <article class="card about-step-card">
+                  <h3>2. Example Transmission (Lead-Lag)</h3>
+                  <div class="transmission-lanes" aria-hidden="true">
+                    <div class="lane">
+                      <span class="lane-label">SOXX</span>
+                      <span class="lane-bar lane-bar-short"></span>
+                    </div>
+                    <div class="lane">
+                      <span class="lane-label">QQQ</span>
+                      <span class="lane-bar lane-bar-mid"></span>
+                    </div>
+                    <div class="lane">
+                      <span class="lane-label">XLU</span>
+                      <span class="lane-bar lane-bar-late"></span>
+                    </div>
+                    <div class="lane">
+                      <span class="lane-label">XLE</span>
+                      <span class="lane-bar lane-bar-conditional"></span>
+                    </div>
+                  </div>
+                  <p>
+                    Different sectors react at different horizons. Lead-lag mode preserves this
+                    propagation pattern instead of collapsing everything into one average curve.
+                  </p>
+                </article>
+
+                <article class="card about-step-card">
+                  <h3>3. Modeling Approaches</h3>
+                  <div class="approach-list">
+                    <div class="approach-item active-approach">
+                      <span class="approach-name">Empirical Templates</span>
+                      <span class="approach-note">Calibrated amplitude, lag, decay, uncertainty</span>
+                    </div>
+                    <div class="approach-item active-approach alt-approach">
+                      <span class="approach-name">Lead-Lag</span>
+                      <span class="approach-note">Blended horizon-response paths by asset</span>
+                    </div>
+                    <div class="approach-item planned-approach">
+                      <span class="approach-name">Measured Windows</span>
+                      <span class="approach-note">Future upgrade from real event-by-event return windows</span>
+                    </div>
+                  </div>
+                </article>
+
+                <article class="card about-step-card">
+                  <h3>4. Data and Limitations</h3>
+                  <div class="limitation-list">
+                    <div class="limitation-item">
+                      Seeded event examples support today’s prototype and the supported taxonomy.
+                    </div>
+                    <div class="limitation-item">
+                      Outputs are structured scenarios with uncertainty, not price targets or
+                      investment advice.
+                    </div>
+                    <div class="limitation-item">
+                      The next upgrade is measured event windows tied to timestamped articles and
+                      historical ETF data.
+                    </div>
+                  </div>
+                </article>
+              </div>
+
+              <article class="card disclaimer-card">
+                <p>
+                  This is a research prototype for educational and exploratory use. Transparency
+                  first, models second, insights always.
+                </p>
+              </article>
             </div>
-          </article>
-        </section>
-      </main>
+          </section>
+        </main>
+      </div>
     </div>
 
-    <script src="./app.js?v=20260428" defer></script>
+    <script src="./app.js?v=20260428d" defer></script>
   </body>
 </html>
