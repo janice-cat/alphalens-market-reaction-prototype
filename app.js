@@ -112,6 +112,8 @@ const DEMO_SCRIPT = {
 const DOM = {
   tabs: document.querySelectorAll(".tab-button"),
   panels: document.querySelectorAll(".tab-panel"),
+  analyzeLayout: document.querySelector(".analyze-layout"),
+  analysisResults: document.querySelector(".analysis-results"),
   input: document.querySelector("#event-input"),
   inputCard: document.querySelector(".input-card"),
   analyzeButton: document.querySelector("#analyze-button"),
@@ -154,6 +156,7 @@ const state = {
   leadLagProfiles: {},
   calibrationStats: {},
   predictionMode: "empirical",
+  resultsVisible: false,
   history: loadHistory(),
   demoRunId: 0,
   demoActive: false,
@@ -169,21 +172,13 @@ async function initialize() {
   bindEvents();
   initializeAboutScenes();
   updatePredictionModeUI();
+  setResultsVisibility(false);
   setLoadingState();
 
   try {
     await loadDataset();
     renderSampleOptions();
-
-    const firstSample = state.catalog.sampleEvents[0];
-    if (firstSample) {
-      DOM.input.value = firstSample;
-      if (DOM.sampleSelect) {
-        DOM.sampleSelect.value = firstSample;
-      }
-      runAnalysis(firstSample, { persist: false });
-      scheduleAutoDemo();
-    }
+    scheduleAutoDemo();
   } catch (error) {
     setDatasetErrorState(error);
   }
@@ -277,7 +272,7 @@ function bindEvents() {
 
       clearDemoSequence();
       DOM.input.value = sample;
-      runAnalysis(sample, { persist: true });
+      DOM.input.focus();
     });
   }
 
@@ -287,6 +282,18 @@ function bindEvents() {
       runAnalysis(DOM.input.value, { persist: true });
     }
   });
+}
+
+function setResultsVisibility(isVisible) {
+  state.resultsVisible = isVisible;
+
+  if (!DOM.analyzeLayout) {
+    return;
+  }
+
+  DOM.analyzeLayout.classList.toggle("results-hidden", !isVisible);
+  DOM.analyzeLayout.classList.toggle("results-revealed", isVisible);
+  DOM.analysisResults?.setAttribute("aria-hidden", isVisible ? "false" : "true");
 }
 
 function setPredictionMode(mode, options = { rerun: false }) {
@@ -925,6 +932,7 @@ function runAnalysis(inputText, options = { persist: true }) {
 
   const classification = classifyEvent(cleanInput);
   const scenario = buildScenario(classification, state.predictionMode);
+  setResultsVisibility(true);
 
   updateClassificationUI(classification);
   renderAnalogs(classification);
@@ -2113,6 +2121,9 @@ async function runDemoSequence(runId) {
   const headline = getDemoHeadline();
 
   setPredictionMode("empirical", { rerun: false });
+  if (!state.resultsVisible) {
+    setResultsVisibility(false);
+  }
   DOM.input.value = "";
   await nextPaint();
   if (!isDemoRunActive(runId)) {

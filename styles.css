@@ -75,15 +75,12 @@ code {
 }
 
 .app-shell {
-  max-width: 1540px;
+  max-width: 1640px;
   margin: 0 auto;
   padding: 22px 18px 36px;
-  display: grid;
-  grid-template-columns: 188px minmax(0, 1fr);
-  gap: 18px;
+  display: block;
 }
 
-.sidebar,
 .workspace,
 .workspace-main {
   min-width: 0;
@@ -195,6 +192,14 @@ code {
   font-weight: 700;
 }
 
+.top-banner-nav .tab-button {
+  width: auto;
+  min-width: 118px;
+  justify-content: center;
+  padding: 10px 18px;
+  border-radius: 999px;
+}
+
 .nav-icon {
   display: inline-grid;
   place-items: center;
@@ -266,8 +271,58 @@ code {
 
 .workspace {
   display: grid;
-  gap: 16px;
+  gap: 18px;
   align-content: start;
+}
+
+.top-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 10px 2px 2px;
+}
+
+.top-banner-brand {
+  display: inline-flex;
+  align-items: center;
+  gap: 14px;
+  min-width: 0;
+}
+
+.top-banner-mark {
+  display: block;
+  width: 58px;
+  height: 58px;
+  border-radius: 18px;
+  object-fit: cover;
+  box-shadow: 0 14px 28px rgba(15, 38, 70, 0.22);
+}
+
+.top-banner-copy {
+  min-width: 0;
+}
+
+.top-banner-name {
+  margin: 0;
+  font-size: 1.34rem;
+  font-weight: 700;
+  letter-spacing: -0.04em;
+}
+
+.top-banner-tag {
+  margin: 2px 0 0;
+  color: var(--muted);
+  font-size: 0.72rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.top-banner-nav {
+  display: inline-flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 10px;
 }
 
 .tab-panel {
@@ -278,7 +333,11 @@ code {
   display: block;
 }
 
-.analyze-layout,
+.analyze-layout {
+  display: grid;
+  gap: 0;
+}
+
 .about-layout {
   display: grid;
   gap: 14px;
@@ -314,6 +373,41 @@ code {
 
 .input-card {
   padding: 16px 18px 14px;
+}
+
+.analyze-layout.results-hidden {
+  min-height: min(74vh, 860px);
+  align-content: center;
+}
+
+.analyze-layout.results-hidden .input-card {
+  width: min(100%, 1500px);
+  margin-inline: auto;
+}
+
+.analysis-results {
+  display: grid;
+  gap: 14px;
+  margin-top: 14px;
+  overflow: hidden;
+  max-height: 2800px;
+  visibility: visible;
+  opacity: 1;
+  transform: translateY(0);
+  transition:
+    max-height 360ms cubic-bezier(0.2, 0.8, 0.2, 1),
+    margin-top 260ms ease,
+    opacity 220ms ease,
+    transform 220ms ease;
+}
+
+.analyze-layout.results-hidden .analysis-results {
+  max-height: 0;
+  margin-top: 0;
+  visibility: hidden;
+  opacity: 0;
+  transform: translateY(18px);
+  pointer-events: none;
 }
 
 .control-row {
@@ -1170,6 +1264,28 @@ body.demo-running #event-input {
   gap: 0;
 }
 
+.about-footer-note {
+  display: grid;
+  gap: 8px;
+  justify-items: center;
+  padding: 18px 0 4px;
+  color: var(--muted);
+  text-align: center;
+}
+
+.about-footer-row {
+  display: inline-flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.8rem;
+}
+
+.about-footer-copy {
+  margin: 0;
+  font-size: 0.76rem;
+  line-height: 1.5;
+}
+
 .about-scene {
   position: relative;
   min-height: 138vh;
@@ -1178,17 +1294,20 @@ body.demo-running #event-input {
 .about-scene-sticky {
   position: sticky;
   top: clamp(56px, 9vh, 94px);
-  min-height: min(86vh, 880px);
+  min-height: min(90vh, 940px);
   display: grid;
-  align-items: center;
+  align-items: start;
+  padding-top: clamp(54px, 8vh, 108px);
 }
 
 .about-scene-card {
-  min-height: min(76vh, 780px);
+  min-height: auto;
+  width: min(100%, 1380px);
+  margin-inline: auto;
   padding: 8px 10px 8px 6px;
   display: grid;
-  align-content: center;
-  gap: 18px;
+  align-content: start;
+  gap: 22px;
   overflow: visible;
   border: 0;
   border-radius: 0;
@@ -1255,6 +1374,8 @@ body.demo-running #event-input {
 }
 
 .about-opening-card {
+  min-height: min(76vh, 780px);
+  align-content: center;
   justify-items: center;
   text-align: center;
 }
@@ -1411,30 +1532,29 @@ body.demo-running #event-input {
   overflow: hidden;
 }
 
+.about-flow-card .card-heading,
+.about-method-card .card-heading,
+.about-data-card .card-heading,
+.about-why-card .card-heading {
+  width: min(100%, 1040px);
+  margin: 0 auto 14px;
+}
+
 .about-flow-diagram {
   position: relative;
   z-index: 1;
   display: flex;
   align-items: flex-start;
-  gap: 12px;
+  justify-content: space-between;
+  gap: clamp(8px, 1vw, 14px);
+  width: min(100%, 1260px);
+  margin-inline: auto;
   padding: 18px 4px 10px;
-  overflow-x: auto;
-  scrollbar-width: thin;
+  overflow: visible;
 }
 
 .about-flow-diagram::before {
-  content: "";
-  position: absolute;
-  inset: 0 6px 0 6px;
-  pointer-events: none;
-  background:
-    radial-gradient(circle at 9% 36%, rgba(204, 179, 255, 0.34), transparent 17%),
-    radial-gradient(circle at 30% 34%, rgba(237, 89, 255, 0.28), transparent 18%),
-    radial-gradient(circle at 51% 33%, rgba(165, 118, 255, 0.24), transparent 18%),
-    radial-gradient(circle at 72% 32%, rgba(87, 214, 255, 0.24), transparent 18%),
-    radial-gradient(circle at 92% 34%, rgba(112, 255, 214, 0.22), transparent 18%);
-  filter: blur(18px);
-  opacity: 0.92;
+  display: none;
 }
 
 .about-flow-step {
@@ -1446,17 +1566,35 @@ body.demo-running #event-input {
   gap: 14px;
   text-align: center;
   color: var(--step-color);
+  overflow: visible;
 }
 
 .about-flow-step::before {
   content: "";
   position: absolute;
-  top: 4px;
-  width: 140px;
-  height: 140px;
+  left: 50%;
+  top: -18px;
+  width: 248px;
+  height: 210px;
+  transform: translateX(-50%);
   border-radius: 50%;
-  background: radial-gradient(circle, var(--step-glow), transparent 72%);
-  filter: blur(20px);
+  background: radial-gradient(ellipse at center, var(--step-ambient), transparent 72%);
+  filter: blur(38px);
+  opacity: 0.84;
+  z-index: -2;
+}
+
+.about-flow-step::after {
+  content: "";
+  position: absolute;
+  left: 50%;
+  top: 6px;
+  width: 144px;
+  height: 144px;
+  transform: translateX(-50%);
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--step-core), transparent 70%);
+  filter: blur(22px);
   opacity: 0.72;
   z-index: -1;
 }
@@ -1464,26 +1602,36 @@ body.demo-running #event-input {
 .step-lilac {
   --step-color: #d5b7ff;
   --step-glow: rgba(213, 183, 255, 0.34);
+  --step-ambient: rgba(197, 168, 255, 0.2);
+  --step-core: rgba(219, 198, 255, 0.34);
 }
 
 .step-magenta {
   --step-color: #ef77ff;
   --step-glow: rgba(239, 119, 255, 0.32);
+  --step-ambient: rgba(237, 119, 255, 0.18);
+  --step-core: rgba(239, 119, 255, 0.3);
 }
 
 .step-violet {
   --step-color: #b887ff;
   --step-glow: rgba(184, 135, 255, 0.3);
+  --step-ambient: rgba(184, 135, 255, 0.16);
+  --step-core: rgba(184, 135, 255, 0.28);
 }
 
 .step-cyan {
   --step-color: #68d8ff;
   --step-glow: rgba(104, 216, 255, 0.28);
+  --step-ambient: rgba(104, 216, 255, 0.16);
+  --step-core: rgba(128, 229, 255, 0.26);
 }
 
 .step-mint {
   --step-color: #8dffd7;
   --step-glow: rgba(141, 255, 215, 0.28);
+  --step-ambient: rgba(141, 255, 215, 0.15);
+  --step-core: rgba(165, 255, 224, 0.24);
 }
 
 .about-flow-icon {
@@ -1549,7 +1697,9 @@ body.demo-running #event-input {
   z-index: 1;
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 16px;
+  gap: 20px;
+  width: min(100%, 1080px);
+  margin-inline: auto;
 }
 
 .about-mode-card {
@@ -1615,8 +1765,8 @@ body.demo-running #event-input {
 .about-method-support {
   position: relative;
   z-index: 1;
-  margin: 2px 0 0;
-  max-width: 860px;
+  margin: 4px auto 0;
+  max-width: 960px;
   font-size: 0.92rem;
   line-height: 1.55;
 }
@@ -1625,14 +1775,16 @@ body.demo-running #event-input {
   position: relative;
   z-index: 1;
   display: grid;
-  gap: 16px;
+  gap: 18px;
+  width: min(100%, 1180px);
+  margin-inline: auto;
   max-width: 1180px;
   justify-items: center;
 }
 
 .about-master-node {
   width: 100%;
-  max-width: 1180px;
+  max-width: 1040px;
   padding: 14px 16px;
   border: 1px solid rgba(255, 255, 255, 0.07);
   border-radius: 22px;
@@ -1684,9 +1836,9 @@ body.demo-running #event-input {
   position: relative;
   display: grid;
   grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 12px;
+  gap: 20px;
   width: 100%;
-  max-width: 1180px;
+  max-width: 1080px;
   align-items: start;
 }
 
@@ -1760,7 +1912,8 @@ body.demo-running #event-input {
 .about-honesty-list {
   position: relative;
   z-index: 1;
-  margin: 4px 0 0;
+  width: min(100%, 1040px);
+  margin: 8px auto 0;
   padding-left: 1.15rem;
   display: grid;
   gap: 8px;
@@ -1773,13 +1926,19 @@ body.demo-running #event-input {
   color: var(--text);
 }
 
+.about-why-copy {
+  width: min(100%, 980px);
+  margin-inline: auto;
+}
+
 .about-pillars-grid {
   position: relative;
   z-index: 1;
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
-  gap: 12px;
-  margin-top: 12px;
+  gap: 24px;
+  width: min(100%, 1180px);
+  margin: 12px auto 0;
 }
 
 .about-pillar-card {
@@ -1930,35 +2089,14 @@ body.demo-running #event-input {
 }
 
 @media (max-width: 1140px) {
-  .app-shell {
-    grid-template-columns: 1fr;
+  .top-banner {
+    align-items: start;
+    flex-direction: column;
   }
 
-  .sidebar {
-    position: static;
-    top: auto;
-    max-height: none;
-    grid-template-columns: minmax(0, 1fr) auto auto;
-    align-items: stretch;
-  }
-
-  .brand-card {
-    grid-auto-flow: column;
-    align-items: center;
-  }
-
-  .brand-mark {
-    width: 68px;
-    height: 68px;
-  }
-
-  .sidebar-nav {
-    grid-auto-flow: column;
-    grid-auto-columns: minmax(0, 1fr);
-  }
-
-  .sidebar-footer {
-    align-content: center;
+  .top-banner-nav {
+    width: 100%;
+    justify-content: start;
   }
 
   .results-grid,
@@ -1993,16 +2131,30 @@ body.demo-running #event-input {
     gap: 14px;
   }
 
-  .sidebar {
-    grid-template-columns: 1fr;
+  .top-banner {
+    gap: 14px;
   }
 
-  .brand-card {
-    grid-auto-flow: row;
+  .top-banner-brand {
+    gap: 12px;
   }
 
-  .sidebar-nav {
-    grid-auto-flow: row;
+  .top-banner-mark {
+    width: 50px;
+    height: 50px;
+    border-radius: 16px;
+  }
+
+  .top-banner-nav {
+    width: 100%;
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
+  .top-banner-nav .tab-button {
+    min-width: 0;
+    width: 100%;
+    padding-inline: 14px;
   }
 
   .prompt-row,
@@ -2093,16 +2245,19 @@ body.demo-running #event-input {
   }
 
   .about-flow-step {
-    flex-basis: 142px;
+    flex: 1 1 calc(50% - 10px);
+    min-width: 138px;
+    max-width: 200px;
   }
 
   .about-flow-arrow {
-    flex-basis: 60px;
-    padding-top: 30px;
+    display: none;
   }
 
-  .about-flow-arrow svg {
-    width: 60px;
+  .about-flow-diagram {
+    justify-content: center;
+    flex-wrap: wrap;
+    gap: 16px 10px;
   }
 
   .about-master-node {

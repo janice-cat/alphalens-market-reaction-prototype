@@ -4,62 +4,30 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>AlphaLens</title>
-    <link rel="stylesheet" href="./styles.css?v=20260429d" />
+    <link rel="stylesheet" href="./styles.css?v=20260430d" />
   </head>
   <body>
     <div class="app-shell">
-      <aside class="sidebar">
-        <div class="brand-card">
-          <img class="brand-mark" src="./assets/logo.jpg" alt="" />
-          <div class="brand-copy">
-            <p class="brand-name">AlphaLens</p>
-            <p class="brand-tag">Market Reaction Simulator</p>
-          </div>
-        </div>
-
-        <nav class="sidebar-nav" aria-label="AlphaLens sections">
-          <button class="tab-button active" data-tab="analyze">
-            <span class="nav-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24">
-                <path d="M13 2 4 14h6l-1 8 9-12h-6l1-8Z"></path>
-              </svg>
-            </span>
-            <span>Analyze Event</span>
-          </button>
-          <button class="tab-button" data-tab="history">
-            <span class="nav-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24">
-                <circle cx="12" cy="12" r="9"></circle>
-                <path d="M12 7v5l3 2"></path>
-              </svg>
-            </span>
-            <span>History</span>
-          </button>
-          <button class="tab-button" data-tab="about">
-            <span class="nav-icon" aria-hidden="true">
-              <svg viewBox="0 0 24 24">
-                <circle cx="12" cy="12" r="9"></circle>
-                <path d="M12 10v6"></path>
-                <path d="M12 7h.01"></path>
-              </svg>
-            </span>
-            <span>About</span>
-          </button>
-        </nav>
-
-        <div class="sidebar-footer">
-          <div class="sidebar-footer-row">
-            <span class="status-dot" aria-hidden="true"></span>
-            <span>Prototype v0.3.0</span>
-          </div>
-          <p class="sidebar-disclaimer">Research prototype only. Not financial advice.</p>
-        </div>
-      </aside>
-
       <div class="workspace">
+        <header class="top-banner">
+          <div class="top-banner-brand">
+            <img class="top-banner-mark" src="./assets/logo.jpg" alt="" />
+            <div class="top-banner-copy">
+              <p class="top-banner-name">AlphaLens</p>
+              <p class="top-banner-tag">Market Reaction Simulator</p>
+            </div>
+          </div>
+
+          <nav class="top-banner-nav" aria-label="AlphaLens sections">
+            <button class="tab-button active" data-tab="analyze">Analyze Event</button>
+            <button class="tab-button" data-tab="history">History</button>
+            <button class="tab-button" data-tab="about">About</button>
+          </nav>
+        </header>
+
         <main class="workspace-main">
           <section class="tab-panel active" id="tab-analyze">
-            <div class="analyze-layout">
+            <div class="analyze-layout results-hidden">
               <article class="card input-card">
                 <div class="card-heading">
                   <div>
@@ -124,115 +92,117 @@
                 </div>
               </article>
 
-              <div class="results-grid">
-                <article class="card classification-card">
+              <div class="analysis-results">
+                <div class="results-grid">
+                  <article class="card classification-card">
+                    <div class="card-heading">
+                      <div>
+                        <h2>Event Understanding</h2>
+                        <p class="card-kicker">Primary classification and blend</p>
+                      </div>
+                    </div>
+                    <div class="classification-scroll">
+                      <div class="classification-topline">
+                        <span id="classification-badge" class="event-badge neutral">Waiting for input</span>
+                        <span id="confidence-pill" class="confidence-pill">Confidence --</span>
+                      </div>
+
+                      <div class="confidence-meter">
+                        <div id="confidence-fill" class="confidence-fill"></div>
+                      </div>
+
+                      <div class="blend-panel">
+                        <div class="blend-heading">
+                          <span>Blend Mix</span>
+                          <span class="blend-kicker">Weighted event exposures</span>
+                        </div>
+                        <div id="blend-list" class="blend-list"></div>
+                      </div>
+
+                      <div class="classification-summary-list">
+                        <div class="classification-summary-row">
+                          <span class="summary-inline-label">Theme</span>
+                          <p id="classification-theme" class="summary-inline-value">--</p>
+                        </div>
+                        <div class="classification-summary-row">
+                          <span class="summary-inline-label">Channels</span>
+                          <p id="classification-channels" class="summary-inline-value">--</p>
+                        </div>
+                      </div>
+
+                      <details class="classification-details">
+                        <summary>Why this classification</summary>
+                        <p id="classification-rationale" class="classification-rationale">
+                          Paste an event to classify it.
+                        </p>
+                      </details>
+                    </div>
+                  </article>
+
+                  <article class="card chart-card">
+                    <div class="card-heading chart-heading">
+                      <div class="chart-heading-copy">
+                        <h2>Reaction Trajectory <span class="chart-title-detail">(0-3 trading days)</span></h2>
+                      </div>
+                      <div class="legend" id="chart-legend"></div>
+                    </div>
+
+                    <div class="chart-frame">
+                      <svg
+                        id="reaction-chart"
+                        viewBox="0 0 960 460"
+                        role="img"
+                        aria-label="AlphaLens reaction chart"
+                      ></svg>
+                    </div>
+                  </article>
+                </div>
+
+                <article class="card move-story-section">
                   <div class="card-heading">
                     <div>
-                      <h2>Event Understanding</h2>
-                      <p class="card-kicker">Primary classification and blend</p>
-                    </div>
-                  </div>
-                  <div class="classification-scroll">
-                    <div class="classification-topline">
-                      <span id="classification-badge" class="event-badge neutral">Waiting for input</span>
-                      <span id="confidence-pill" class="confidence-pill">Confidence --</span>
-                    </div>
-
-                    <div class="confidence-meter">
-                      <div id="confidence-fill" class="confidence-fill"></div>
-                    </div>
-
-                    <div class="blend-panel">
-                      <div class="blend-heading">
-                        <span>Blend Mix</span>
-                        <span class="blend-kicker">Weighted event exposures</span>
-                      </div>
-                      <div id="blend-list" class="blend-list"></div>
-                    </div>
-
-                    <div class="classification-summary-list">
-                      <div class="classification-summary-row">
-                        <span class="summary-inline-label">Theme</span>
-                        <p id="classification-theme" class="summary-inline-value">--</p>
-                      </div>
-                      <div class="classification-summary-row">
-                        <span class="summary-inline-label">Channels</span>
-                        <p id="classification-channels" class="summary-inline-value">--</p>
-                      </div>
-                    </div>
-
-                    <details class="classification-details">
-                      <summary>Why this classification</summary>
-                      <p id="classification-rationale" class="classification-rationale">
-                        Paste an event to classify it.
+                      <h2>Why Each ETF Moved</h2>
+                      <p id="timing-kicker" class="card-kicker">
+                        Relative order and rationale by asset (left = leads, right = lags)
                       </p>
-                    </details>
-                  </div>
-                </article>
-
-                <article class="card chart-card">
-                  <div class="card-heading chart-heading">
-                    <div class="chart-heading-copy">
-                      <h2>Reaction Trajectory <span class="chart-title-detail">(0-3 trading days)</span></h2>
                     </div>
-                    <div class="legend" id="chart-legend"></div>
                   </div>
-
-                  <div class="chart-frame">
-                    <svg
-                      id="reaction-chart"
-                      viewBox="0 0 960 460"
-                      role="img"
-                      aria-label="AlphaLens reaction chart"
-                    ></svg>
+                  <div class="story-guide" aria-hidden="true">
+                    <span class="story-guide-label story-guide-lead">Lead</span>
+                    <span class="story-guide-line"></span>
+                    <span class="story-guide-label story-guide-lag">Lag</span>
                   </div>
+                  <div id="timing-list" class="move-story-grid"></div>
                 </article>
-              </div>
 
-              <article class="card move-story-section">
-                <div class="card-heading">
-                  <div>
-                    <h2>Why Each ETF Moved</h2>
-                    <p id="timing-kicker" class="card-kicker">
-                      Relative order and rationale by asset (left = leads, right = lags)
-                    </p>
-                  </div>
+                <div class="insight-grid">
+                  <article class="card explanation-card">
+                    <div class="card-heading">
+                      <div>
+                        <h2>Market Read</h2>
+                      </div>
+                    </div>
+                    <div class="insight-scroll">
+                      <p id="market-read-text" class="explanation-text">
+                        Run an event to generate an asset-trend summary.
+                      </p>
+                      <p id="confidence-text" class="uncertainty-note">
+                        Confidence details will appear here.
+                      </p>
+                    </div>
+                  </article>
+
+                  <article class="card analog-card">
+                    <div class="card-heading">
+                      <div>
+                        <h2>Closest Historical Analogs</h2>
+                      </div>
+                    </div>
+                    <div class="insight-scroll">
+                      <div id="analog-list" class="analog-list"></div>
+                    </div>
+                  </article>
                 </div>
-                <div class="story-guide" aria-hidden="true">
-                  <span class="story-guide-label story-guide-lead">Lead</span>
-                  <span class="story-guide-line"></span>
-                  <span class="story-guide-label story-guide-lag">Lag</span>
-                </div>
-                <div id="timing-list" class="move-story-grid"></div>
-              </article>
-
-              <div class="insight-grid">
-                <article class="card explanation-card">
-                  <div class="card-heading">
-                    <div>
-                      <h2>Market Read</h2>
-                    </div>
-                  </div>
-                  <div class="insight-scroll">
-                    <p id="market-read-text" class="explanation-text">
-                      Run an event to generate an asset-trend summary.
-                    </p>
-                    <p id="confidence-text" class="uncertainty-note">
-                      Confidence details will appear here.
-                    </p>
-                  </div>
-                </article>
-
-                <article class="card analog-card">
-                  <div class="card-heading">
-                    <div>
-                      <h2>Closest Historical Analogs</h2>
-                    </div>
-                  </div>
-                  <div class="insight-scroll">
-                    <div id="analog-list" class="analog-list"></div>
-                  </div>
-                </article>
               </div>
             </div>
           </section>
@@ -531,6 +501,14 @@
                   </article>
                 </div>
               </section>
+
+              <div class="about-footer-note">
+                <div class="about-footer-row">
+                  <span class="status-dot" aria-hidden="true"></span>
+                  <span>Prototype v0.3.0</span>
+                </div>
+                <p class="about-footer-copy">Research prototype only. Not financial advice.</p>
+              </div>
             </div>
           </section>
         </main>
@@ -544,6 +522,6 @@
       </div>
     </div>
 
-    <script src="./app.js?v=20260429d" defer></script>
+    <script src="./app.js?v=20260430d" defer></script>
   </body>
 </html>
